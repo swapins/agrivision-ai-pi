@@ -1,67 +1,144 @@
-# AgriVision AI — Raspberry Pi + Coral Edge TPU Smart Farm
+<div align="center">
 
-A complete school-exhibition implementation for the **AgriVision AI** project: a Raspberry Pi 4 controls sensors, irrigation, camera capture, LEDs/buzzer and a local dashboard, while a Google Coral USB Accelerator performs local TensorFlow Lite inference.
+<img src="src/agrivision/static/peachbot-logo.svg" alt="PeachBot — SBC for Biology" width="420">
 
-> **Project author:** Isis Saritha Swapin — Class VIII, PeachBot Author / student researcher in precision agriculture.
+# AgriVision AI
+## Raspberry Pi + Coral Edge TPU Smart Agriculture Project
 
-## What this repository contains
+**Edge AI plant-health monitoring · automatic irrigation · local/offline inference · school science exhibition**
 
-- Raspberry Pi runtime with real hardware and explicit simulation mode.
-- Capacitive soil-moisture sensing through ADS1115.
-- BME280 temperature/humidity monitoring.
-- Safe 5 V pump control through a MOSFET module, with hysteresis, runtime limit and cooldown.
-- Raspberry Pi Camera / Picamera2 capture.
-- Coral Edge TPU inference through PyCoral.
-- Local Flask dashboard with a one-click **SCAN LEAF** workflow.
-- Green / yellow / red LED health indicators and brief buzzer alert.
-- Soil calibration and hardware self-test utilities.
-- Systemd service for exhibition-day auto-start.
-- Reproducible MobileNetV2 training, full-integer TFLite export and Edge TPU compilation pipeline.
-- Hugging Face publishing script and model-card template.
-- Unit tests that run on a normal PC without Raspberry Pi hardware.
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-4-C51A4A?logo=raspberrypi&logoColor=white)](https://www.raspberrypi.com/)
+[![Coral Edge TPU](https://img.shields.io/badge/Google%20Coral-Edge%20TPU-4285F4)](https://coral.ai/)
+[![TensorFlow Lite](https://img.shields.io/badge/TensorFlow-Lite-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/lite)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Recommended model strategy
+**Developed by [Isis Saritha Swapin](https://peachbot.in/people/4)**  
+Class VIII · PeachBot Author
 
-The runtime accepts either a compact binary model (`healthy`, `problem`) or a multiclass PlantVillage-style disease model. For the most reliable school demonstration, the recommended first release is **MobileNetV2 alpha 0.35, 224×224**, fine-tuned on a leaf-grouped PlantVillage split and exported as fully quantized INT8 TFLite before Edge TPU compilation.
+**Contributor: Swapin Vidya**
 
-`stress` can be produced by a dedicated model if a validated stress dataset is available, but this repository does **not** silently fabricate a visual stress class. Soil/water stress is already demonstrated using the real moisture sensor. See `docs/MODEL.md`.
+</div>
+
+---
+
+## About AgriVision AI
+
+**AgriVision AI** is an open-source **smart agriculture working model** built for a school science and technology exhibition. It combines a **Raspberry Pi 4**, **Google Coral USB Edge TPU**, camera, soil-moisture sensing, environmental monitoring and low-voltage irrigation into one practical edge-AI system.
+
+The project demonstrates two independent capabilities:
+
+1. **Real sensor-controlled irrigation** — a capacitive soil-moisture sensor is read through an ADS1115 ADC and the Raspberry Pi safely controls a 5 V water pump through a MOSFET driver.
+2. **Real local AI inference** — a leaf image captured by the Raspberry Pi Camera is classified by a quantized TensorFlow Lite model accelerated by the Coral Edge TPU.
+
+After installation and model deployment, the core demonstration can run **without sending each image to a cloud service**.
+
+### Search-friendly project themes
+
+Raspberry Pi smart agriculture · AI agriculture project for students · smart farming working model · Coral Edge TPU project · plant disease detection using Raspberry Pi · automatic irrigation project · edge AI agriculture · school science fair AI project · TensorFlow Lite plant health classification · offline AI smart farm
+
+---
+
+## Project authorship
+
+### Primary developer — Isis Saritha Swapin
+
+**Isis Saritha Swapin** is the primary developer and student author of AgriVision AI. The repository is presented as her Class VIII PeachBot project and accompanies her work communicating science and technology through PeachBot.
+
+- Role: **Primary Developer / Project Author**
+- Project: **AgriVision AI**
+- Focus: Raspberry Pi, Edge AI, smart farming and school STEM demonstration
+- PeachBot author profile: https://peachbot.in/people/4
+
+### Contributor — Swapin Vidya
+
+**Swapin Vidya** is credited as a project contributor supporting the technical architecture, engineering review, documentation and implementation guidance.
+
+See [`AUTHORS.md`](AUTHORS.md) and [`CITATION.cff`](CITATION.cff) for formal attribution.
+
+---
+
+## What the system does
+
+- Measures **soil moisture** using a capacitive probe and ADS1115.
+- Measures **temperature and humidity** using BME280.
+- Automatically starts a **5 V irrigation pump** when soil is too dry.
+- Applies **hysteresis, maximum runtime and cooldown** to make the pump demo safer and more reliable.
+- Captures leaves with **Raspberry Pi Camera Module 3 / Picamera2**.
+- Runs a **MobileNetV2-based TensorFlow Lite classifier** on the **Coral Edge TPU**.
+- Displays plant status, confidence and sensor readings on a **local Flask dashboard**.
+- Uses **green / yellow / red LEDs** and a buzzer for exhibition-friendly feedback.
+- Includes an explicit **simulation mode for development**, visibly marked so it cannot be confused with a real hardware run.
+- Includes model training, INT8 export, Edge TPU compilation and future Hugging Face publishing tooling.
+
+---
+
+## System architecture
+
+```text
+Camera Module 3
+      │
+      ▼
+Raspberry Pi 4 ───────► Coral USB Edge TPU
+      │                  │
+      │                  └── Plant-health inference
+      │
+      ├── ADS1115 ◄── Capacitive soil-moisture sensor
+      ├── BME280  ◄── Temperature / humidity
+      ├── MOSFET ───► 5 V irrigation pump
+      ├── LEDs + buzzer
+      └── Local Flask dashboard
+```
+
+All essential decisions are local to the model. Internet access is not required for each inference after the system and model are installed.
+
+---
 
 ## Hardware
 
 | Component | Purpose |
 |---|---|
 | Raspberry Pi 4 (4 GB recommended) | Main controller and dashboard |
-| Google Coral USB Accelerator | Edge TPU inference |
+| Google Coral USB Accelerator | Edge TPU neural-network inference |
 | Raspberry Pi Camera Module 3 | Leaf image capture |
-| Capacitive soil moisture sensor | Soil moisture |
-| ADS1115 ADC | Reads analog soil sensor |
-| BME280 | Temperature / humidity |
-| 5 V mini pump | Irrigation |
+| Capacitive soil moisture sensor | Soil moisture measurement |
+| ADS1115 16-bit ADC | Converts soil-sensor analog output |
+| BME280 | Temperature and humidity |
+| 5 V mini pump | Irrigation demonstration |
 | Logic-level MOSFET driver | Safe pump switching |
-| Green / yellow / red LEDs | Plant status |
-| 3.3 V logic-compatible active buzzer | Alert |
+| Green / yellow / red LEDs | Plant-health / warning status |
+| 3.3 V-compatible active buzzer | Alert |
+| Separate 5 V pump supply | Keeps pump current away from Pi GPIO |
 
-**Never power the pump from a GPIO pin.** Use a separate 5 V pump supply and a proper MOSFET driver, with common logic ground. Keep water physically separated from the Pi and power electronics.
+> **Safety:** never power the pump directly from a Raspberry Pi GPIO pin. Keep the water reservoir and tubing physically separated from the Pi, Coral and power electronics.
 
-## GPIO plan (BCM numbering)
+---
 
-- Pump MOSFET: GPIO17
-- Green LED: GPIO22
-- Yellow LED: GPIO23
-- Red LED: GPIO24
-- Buzzer: GPIO27
-- I²C SDA: GPIO2
-- I²C SCL: GPIO3
-- ADS1115 soil channel: A0
-- Coral: USB 3
-- Camera: CSI
+## GPIO plan — BCM numbering
+
+| Function | GPIO / bus |
+|---|---|
+| Pump MOSFET | GPIO17 |
+| Green LED | GPIO22 |
+| Yellow LED | GPIO23 |
+| Red LED | GPIO24 |
+| Buzzer | GPIO27 |
+| I²C SDA | GPIO2 |
+| I²C SCL | GPIO3 |
+| Soil sensor | ADS1115 A0 |
+| Coral accelerator | USB 3 |
+| Camera | CSI |
+
+See [`docs/HARDWARE.md`](docs/HARDWARE.md) for the full wiring notes.
+
+---
 
 ## Quick start on Raspberry Pi
 
-The compatibility-first route for the original school build is Raspberry Pi OS Bullseye 64-bit on Pi 4 because PyCoral packaging is older than current Raspberry Pi OS Python releases.
+The original exhibition build uses a compatibility-first Raspberry Pi 4 software path for the Coral/PyCoral stack.
 
 ```bash
-git clone https://github.com/swapins/agrivision-ai-pi.git agrivision-ai-pi
+git clone https://github.com/swapins/agrivision-ai-pi.git
 cd agrivision-ai-pi
 sudo bash scripts/install_pi.sh
 sudo bash scripts/install_coral.sh
@@ -70,24 +147,36 @@ python3 scripts/calibrate_soil.py
 python3 scripts/hardware_selftest.py
 ```
 
-Copy the compiled Edge TPU model into `models/`:
+Place the final compiled model in:
 
 ```text
 models/plant_health_edgetpu.tflite
 models/labels.txt
 ```
 
-Then run:
+Run:
 
 ```bash
 ./scripts/run.sh
 ```
 
-Open `http://127.0.0.1:5000` on the Pi, or `http://<PI-IP>:5000` from another device on the same LAN.
+Open:
 
-## Simulation mode on PC
+```text
+http://127.0.0.1:5000
+```
 
-Simulation exists for software development only and is visibly marked in the dashboard. It must not be presented as real hardware inference.
+or from another device on the same LAN:
+
+```text
+http://<PI-IP>:5000
+```
+
+---
+
+## PC simulation mode
+
+Simulation mode is for software development and UI testing only. The dashboard explicitly labels it as simulation.
 
 ```bash
 python3 -m venv .venv
@@ -97,9 +186,22 @@ cp config.example.yaml config.yaml
 AGRIVISION_SIMULATION=1 python -m agrivision.app
 ```
 
-## Training and Coral deployment
+It must not be presented as a real Coral or sensor result.
 
-See `training/README.md`. The pipeline is:
+---
+
+## AI model strategy
+
+The default training target is:
+
+**MobileNetV2 α=0.35 · 224×224 RGB · transfer learning · full-integer INT8 TFLite · Edge TPU compilation**
+
+The first recommended exhibition classifier is intentionally robust and simple:
+
+- `healthy`
+- `problem`
+
+A multiclass mode can preserve individual PlantVillage disease classes. Water stress is independently demonstrated by the real soil sensor rather than manufacturing an unsupported visual stress label.
 
 ```text
 PlantVillage full dataset
@@ -108,19 +210,106 @@ MobileNetV2 α=0.35 / 224 px
         ↓
 Transfer learning + fine-tuning
         ↓
+Held-out evaluation
+        ↓
 Full integer INT8 TFLite
         ↓
 Edge TPU Compiler
         ↓
 plant_health_edgetpu.tflite
         ↓
-Raspberry Pi + Coral USB Accelerator
+Raspberry Pi 4 + Coral USB Accelerator
 ```
 
-## Scientific scope
+See [`training/README.md`](training/README.md) and [`docs/MODEL.md`](docs/MODEL.md).
 
-This is a **school prototype**, not a crop-diagnosis device. PlantVillage images are predominantly controlled-background leaf images, so high held-out accuracy does not prove field robustness. The UI therefore says “possible disease/problem” and exposes confidence / uncertainty instead of presenting predictions as professional advice.
+---
+
+## Repository structure
+
+```text
+agrivision-ai-pi/
+├── src/agrivision/          Raspberry Pi runtime and dashboard
+├── scripts/                 install, calibration, self-test and service scripts
+├── models/                  model deployment location and label examples
+├── training/                MobileNetV2 training, INT8 export and HF release tools
+├── tests/                   PC-safe unit tests
+├── docs/                    hardware, safety, model and exhibition documentation
+├── .github/workflows/       CI and model-training workflows
+├── config.example.yaml      project / GPIO / thresholds configuration
+├── AUTHORS.md               project authorship and contribution statement
+├── CITATION.cff             citation metadata
+└── LICENSE                  MIT license
+```
+
+---
+
+## Testing
+
+Run the unit tests on a normal PC:
+
+```bash
+pip install -e '.[dev]'
+pytest -q
+```
+
+Hardware is abstracted so core configuration and decision logic can be tested without a Raspberry Pi attached.
+
+---
+
+## School exhibition scope
+
+AgriVision AI is designed to demonstrate:
+
+- edge artificial intelligence,
+- computer vision,
+- sensor calibration,
+- automatic irrigation,
+- GPIO control,
+- ADC use,
+- safe load switching,
+- AI confidence and uncertainty,
+- local/offline inference.
+
+The project is **not a professional crop-diagnosis device**. PlantVillage contains largely controlled-background leaf images, so held-out dataset accuracy must not be presented as proof of general field performance.
+
+---
+
+## Citation
+
+If you reuse AgriVision AI in a school project, article, demonstration or derivative implementation, please credit:
+
+> **Isis Saritha Swapin. AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project. PeachBot, 2026. Contributor: Swapin Vidya.**
+
+Machine-readable citation metadata is available in [`CITATION.cff`](CITATION.cff).
+
+---
+
+## GitHub “About” description
+
+Recommended repository description:
+
+> **AgriVision AI is a Raspberry Pi + Coral Edge TPU smart agriculture project developed by Class VIII PeachBot author Isis Saritha Swapin, featuring plant-health Edge AI, soil sensing, automatic irrigation and offline TensorFlow Lite inference.**
+
+Recommended GitHub topics:
+
+`raspberry-pi` · `coral-edge-tpu` · `edge-ai` · `smart-agriculture` · `smart-farming` · `plant-disease-detection` · `automatic-irrigation` · `tensorflow-lite` · `computer-vision` · `iot` · `stem` · `school-project` · `python` · `peachbot`
+
+---
 
 ## License
 
-Source code is released under the MIT License. Dataset and model artifacts may have their own terms; see `docs/MODEL.md` and the model card before redistribution.
+Code is released under the [MIT License](LICENSE).
+
+Dataset and trained-model artifacts may have their own licensing or redistribution terms; verify those terms before publishing model weights.
+
+---
+
+<div align="center">
+
+**SEE · THINK · WATER · PROTECT**
+
+Developed by **Isis Saritha Swapin** · Contributor **Swapin Vidya**  
+**PeachBot — SBC for Biology**
+
+</div>
