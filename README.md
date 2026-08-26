@@ -285,18 +285,6 @@ Machine-readable citation metadata is available in [`CITATION.cff`](CITATION.cff
 
 ---
 
-## GitHub “About” description
-
-Recommended repository description:
-
-> **AgriVision AI is a Raspberry Pi + Coral Edge TPU smart agriculture project developed by Class VIII PeachBot author Isis Saritha Swapin, featuring plant-health Edge AI, soil sensing, automatic irrigation and offline TensorFlow Lite inference.**
-
-Recommended GitHub topics:
-
-`raspberry-pi` · `coral-edge-tpu` · `edge-ai` · `smart-agriculture` · `smart-farming` · `plant-disease-detection` · `automatic-irrigation` · `tensorflow-lite` · `computer-vision` · `iot` · `stem` · `school-project` · `python` · `peachbot`
-
----
-
 ## License
 
 Code is released under the [MIT License](LICENSE).
