@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="src/agrivision/static/peachbot-logo.svg" alt="PeachBot — SBC for Biology" width="420">
+<img src="src/agrivision/static/logo.png" alt="PeachBot — SBC for Biology" width="320">
 
 # AgriVision AI
 ## Raspberry Pi + Coral Edge TPU Smart Agriculture Project
@@ -14,7 +14,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Developed by [Isis Saritha Swapin](https://peachbot.in/people/4)**  
-Class VIII · PeachBot Author
+Class VIII, Syndesmos Public School Mannar Kerala India  · PeachBot Author
 
 **Contributor: Swapin Vidya**
 
@@ -43,7 +43,7 @@ Raspberry Pi smart agriculture · AI agriculture project for students · smart f
 
 ### Primary developer — Isis Saritha Swapin
 
-**Isis Saritha Swapin** is the primary developer and student author of AgriVision AI. The repository is presented as her Class VIII PeachBot project and accompanies her work communicating science and technology through PeachBot.
+**Isis Saritha Swapin** is the primary developer and student author of AgriVision AI. The repository is presented as her School Science PeachBot project and accompanies her work communicating science and technology through PeachBot.
 
 - Role: **Primary Developer / Project Author**
 - Project: **AgriVision AI**
