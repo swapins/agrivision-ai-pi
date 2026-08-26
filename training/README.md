@@ -1,5 +1,9 @@
 # Training and model release
 
+**Project developer:** Isis Saritha Swapin  
+**Contributor:** Swapin Vidya  
+**Brand:** PeachBot
+
 ## Selected base model
 
 **MobileNetV2 alpha 0.35 at 224×224** is the default. It is small, fast, well understood, and designed for mobile/edge inference. The project uses transfer learning, then exports a fully integer INT8 TFLite model for the Coral compiler.
