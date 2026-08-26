@@ -1,0 +1,8 @@
+Flask>=2.2,<4
+PyYAML>=6,<7
+Pillow>=9,<12
+gpiozero>=1.6,<3
+adafruit-circuitpython-ads1x15>=2.2,<4
+adafruit-circuitpython-bme280>=2.6,<4
+# Install Picamera2 and OpenCV from Raspberry Pi OS apt packages.
+# Install python3-pycoral from the Coral apt repository on the compatibility build.

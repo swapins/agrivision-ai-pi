@@ -1,0 +1,15 @@
+[Unit]
+Description=AgriVision AI Smart Farm
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/agrivision-ai-pi
+Environment=PYTHONPATH=/home/pi/agrivision-ai-pi/src
+ExecStart=/usr/bin/python3 -m agrivision.app
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

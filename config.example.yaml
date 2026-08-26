@@ -1,0 +1,49 @@
+project:
+  name: "AgriVision AI"
+  author: "Isis Saritha Swapin"
+  class: "VIII"
+  brand: "PeachBot"
+
+server:
+  host: "0.0.0.0"
+  port: 5000
+
+camera:
+  width: 640
+  height: 480
+  warmup_seconds: 1.5
+  capture_path: "captures/latest.jpg"
+
+model:
+  path: "models/plant_health_edgetpu.tflite"
+  labels: "models/labels.txt"
+  confidence_min: 0.60
+  top_k: 3
+  device: "edgetpu"
+
+soil:
+  ads_channel: 0
+  dry_raw: 21000
+  wet_raw: 9000
+  pump_on_below_percent: 30.0
+  pump_stop_above_percent: 45.0
+
+pump:
+  gpio: 17
+  max_run_seconds: 4.0
+  cooldown_seconds: 20.0
+
+outputs:
+  green_gpio: 22
+  yellow_gpio: 23
+  red_gpio: 24
+  buzzer_gpio: 27
+  buzzer_seconds: 0.20
+
+loop:
+  sensor_interval_seconds: 2.0
+
+simulation:
+  default_soil_percent: 56.0
+  default_temperature_c: 29.0
+  default_humidity_percent: 71.0
