@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project"
+message: "If you use this project, please cite the primary developer Isis Saritha Swapin and acknowledge Swapin Vidya as contributor."
+type: software
+authors:
+  - family-names: "Swapin"
+    given-names: "Isis Saritha"
+    website: "https://peachbot.in/people/4"
+contributors:
+  - family-names: "Vidya"
+    given-names: "Swapin"
+version: 1.0.0
+date-released: 2026-08-27
+url: "https://github.com/swapins/agrivision-ai-pi"
+repository-code: "https://github.com/swapins/agrivision-ai-pi"
+license: MIT
+keywords:
+  - smart agriculture
+  - Raspberry Pi
+  - Coral Edge TPU
+  - edge AI
+  - smart farming
+  - plant disease detection
+  - automatic irrigation
+  - TensorFlow Lite
+  - computer vision
+  - STEM education
+  - school science project
