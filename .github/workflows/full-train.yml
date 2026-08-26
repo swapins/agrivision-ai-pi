@@ -2,15 +2,19 @@ name: full-model-training
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - fix/model-collapse-diagnostics
     paths:
+      - 'training/train_tf_mobilenetv2.py'
+      - 'training/requirements.txt'
       - '.github/workflows/full-train.yml'
   workflow_dispatch:
 
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 330
     permissions:
       contents: read
     steps:
@@ -26,12 +30,16 @@ jobs:
           python -m pip install -U pip
           pip install -r training/requirements.txt
 
-      - name: Full official PeachBot training
+      - name: Full official PeachBot training with collapse safeguards
         run: |
           python training/train_tf_mobilenetv2.py \
             --task binary \
             --init scratch \
-            --require-official-lineage
+            --require-official-lineage \
+            --min-int8-accuracy 0.90 \
+            --min-int8-balanced-accuracy 0.85 \
+            --min-int8-macro-f1 0.85 \
+            --require-all-classes-predicted
 
       - name: Upload full training artifact
         if: ${{ always() }}
@@ -41,19 +49,3 @@ jobs:
           path: training/output/agrivision-mobilenetv2/
           if-no-files-found: warn
           retention-days: 14
-
-      - name: Enforce provisional INT8 quality gate
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          p = Path('training/output/agrivision-mobilenetv2/model_manifest.json')
-          m = json.loads(p.read_text())
-          acc = float(m['int8_test_metrics']['accuracy'])
-          bal = float(m['int8_test_metrics']['balanced_accuracy'])
-          f1 = float(m['int8_test_metrics']['macro_f1'])
-          print({'int8_accuracy': acc, 'balanced_accuracy': bal, 'macro_f1': f1})
-          assert m['official_release_lineage'] is True
-          if acc < 0.90:
-              raise SystemExit(f'INT8 accuracy gate failed: {acc:.4f} < 0.9000')
-          PY
