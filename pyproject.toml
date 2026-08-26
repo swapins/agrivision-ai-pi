@@ -5,19 +5,50 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agrivision-ai"
 version = "1.0.0"
-description = "Raspberry Pi + Coral Edge TPU smart agriculture school project"
+description = "AgriVision AI: Raspberry Pi + Coral Edge TPU smart agriculture, plant-health Edge AI and automatic irrigation project"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
-  {name = "Isis Saritha Swapin"},
-  {name = "PeachBot"}
+  {name = "Isis Saritha Swapin"}
+]
+maintainers = [
+  {name = "Swapin Vidya"}
+]
+keywords = [
+  "raspberry-pi",
+  "coral-edge-tpu",
+  "edge-ai",
+  "smart-agriculture",
+  "smart-farming",
+  "plant-disease-detection",
+  "automatic-irrigation",
+  "tensorflow-lite",
+  "computer-vision",
+  "stem"
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Education"
 ]
 dependencies = [
   "Flask>=2.2,<4",
   "PyYAML>=6,<7",
   "Pillow>=9,<12"
 ]
+
+[project.urls]
+Homepage = "https://github.com/swapins/agrivision-ai-pi"
+Repository = "https://github.com/swapins/agrivision-ai-pi"
+"Author Profile" = "https://peachbot.in/people/4"
+Documentation = "https://github.com/swapins/agrivision-ai-pi/tree/main/docs"
 
 [project.optional-dependencies]
 dev = ["pytest>=7,<9"]
