@@ -1,0 +1,59 @@
+name: full-model-training
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/full-train.yml'
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install training dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r training/requirements.txt
+
+      - name: Full official PeachBot training
+        run: |
+          python training/train_tf_mobilenetv2.py \
+            --task binary \
+            --init scratch \
+            --require-official-lineage
+
+      - name: Upload full training artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: agrivision-full-training-${{ github.run_id }}
+          path: training/output/agrivision-mobilenetv2/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce provisional INT8 quality gate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('training/output/agrivision-mobilenetv2/model_manifest.json')
+          m = json.loads(p.read_text())
+          acc = float(m['int8_test_metrics']['accuracy'])
+          bal = float(m['int8_test_metrics']['balanced_accuracy'])
+          f1 = float(m['int8_test_metrics']['macro_f1'])
+          print({'int8_accuracy': acc, 'balanced_accuracy': bal, 'macro_f1': f1})
+          assert m['official_release_lineage'] is True
+          if acc < 0.90:
+              raise SystemExit(f'INT8 accuracy gate failed: {acc:.4f} < 0.9000')
+          PY
