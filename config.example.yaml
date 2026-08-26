@@ -1,8 +1,10 @@
 project:
   name: "AgriVision AI"
   author: "Isis Saritha Swapin"
+  contributor: "Swapin Vidya"
   class: "VIII"
   brand: "PeachBot"
+  author_profile: "https://peachbot.in/people/4"
 
 server:
   host: "0.0.0.0"
