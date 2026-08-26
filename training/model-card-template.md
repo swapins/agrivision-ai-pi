@@ -12,7 +12,11 @@ license: mit
 
 # AgriVision AI — MobileNetV2 Plant Health Classifier
 
-This model is prepared for the **AgriVision AI** school smart-farming project by Isis Saritha Swapin / PeachBot.
+**Developer:** Isis Saritha Swapin  
+**Contributor:** Swapin Vidya  
+**Project:** PeachBot AgriVision AI
+
+This model is developed for **AgriVision AI** by **Isis Saritha Swapin**, Class VIII PeachBot Author. **Swapin Vidya** is credited as project contributor.
 
 ## Intended use
 
