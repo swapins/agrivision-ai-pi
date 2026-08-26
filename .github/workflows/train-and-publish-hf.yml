@@ -18,7 +18,7 @@ on:
 jobs:
   train-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 360
     permissions:
       contents: read
       id-token: write
@@ -52,7 +52,10 @@ jobs:
             --task binary \
             --init scratch \
             --require-official-lineage \
-            --min-int8-accuracy 0.90
+            --min-int8-accuracy 0.90 \
+            --min-int8-balanced-accuracy 0.85 \
+            --min-int8-macro-f1 0.85 \
+            --require-all-classes-predicted
 
       - name: Upload training artifact to GitHub
         uses: actions/upload-artifact@v4
@@ -79,4 +82,7 @@ jobs:
           python training/publish_hf.py \
             --repo-id "$HF_REPO_ID" \
             --require-official-lineage \
-            --min-int8-accuracy 0.90
+            --min-int8-accuracy 0.90 \
+            --min-int8-balanced-accuracy 0.85 \
+            --min-int8-macro-f1 0.85 \
+            --require-all-classes-predicted
