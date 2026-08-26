@@ -1,0 +1,59 @@
+name: model-smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'training/**'
+      - '.github/workflows/model-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install training dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r training/requirements.txt
+
+      - name: Compile-check training and publication scripts
+        run: |
+          python -m py_compile training/train_tf_mobilenetv2.py training/publish_hf.py
+
+      - name: Tiny-dataset end-to-end smoke training
+        run: |
+          python training/train_tf_mobilenetv2.py \
+            --task binary \
+            --init scratch \
+            --smoke
+
+      - name: Verify smoke manifest is explicitly non-release
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('training/output/agrivision-mobilenetv2/model_manifest.json')
+          m = json.loads(p.read_text())
+          assert m['smoke_dataset'] is True
+          assert m['official_release_lineage'] is False
+          assert m['developer'] == 'Isis Saritha Swapin'
+          assert m['publisher'] == 'PeachBot AI'
+          print('Smoke manifest verified:', m['int8_test_metrics']['accuracy'])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agrivision-model-smoke
+          path: training/output/agrivision-mobilenetv2/
+          if-no-files-found: error
