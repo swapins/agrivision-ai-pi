@@ -168,8 +168,8 @@ def make_tf_dataset(ds, rows, image_size, batch_size, training):
         lambda: image_generator(ds, rows, image_size), output_signature=signature
     )
     if training:
-        out = out.shuffle(min(len(rows), 8192), seed=SEED, reshuffle_each_iteration=True)
-    return out.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+        out = out.shuffle(min(len(rows), 256), seed=SEED, reshuffle_each_iteration=True)
+    return out.batch(batch_size).prefetch(1)
 
 
 def print_tensorflow_runtime():

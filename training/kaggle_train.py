@@ -32,6 +32,8 @@ def main() -> None:
         "scratch",
         "--require-official-lineage",
         "--skip-sanity-check",
+        "--batch-size",
+        "16",
         "--min-int8-accuracy",
         "0.80",
         "--min-int8-balanced-accuracy",
