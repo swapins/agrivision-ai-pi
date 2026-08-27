@@ -17,6 +17,13 @@ class RuntimeState:
     last_scan: str = "-"
     message: str = "System starting"
     simulation: bool = False
+    backend: str = "starting"
+    coral_status: str = "unknown"
+    raw_soil: float | None = None
+    pump_reason: str = "idle"
+    inference_latency_ms: float | None = None
+    last_inference_at: str = "-"
+    error: str = ""
     top_predictions: list[dict[str, Any]] = field(default_factory=list)
 
 
