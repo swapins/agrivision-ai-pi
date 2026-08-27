@@ -172,6 +172,19 @@ def make_tf_dataset(ds, rows, image_size, batch_size, training):
     return out.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
 
+def print_tensorflow_runtime():
+    gpus = tf.config.list_physical_devices("GPU")
+    gpu_names = [gpu.name for gpu in gpus]
+    built_with_cuda = bool(tf.test.is_built_with_cuda())
+    using_cuda_gpu = bool(gpus) and built_with_cuda
+    policy = tf.keras.mixed_precision.global_policy()
+    print("TensorFlow runtime:")
+    print(f"  version: {tf.__version__}")
+    print(f"  physical GPUs: {gpu_names if gpu_names else 'none'}")
+    print(f"  CUDA GPU in use: {using_cuda_gpu}")
+    print(f"  mixed precision policy: {policy.name}")
+
+
 def build_model(image_size, alpha, num_classes, init_mode, augment=True):
     inputs = tf.keras.Input(shape=(image_size, image_size, 3), name="image")
     x = inputs
@@ -382,12 +395,11 @@ def metrics_from_predictions(y_true, y_pred, labels):
     }
 
 
-def evaluate_float(model, ds, test_rows, image_size, labels):
-    y_true, y_pred = [], []
-    for image, target in image_generator(ds, test_rows, image_size):
-        scores = model.predict(np.expand_dims(image, 0), verbose=0)[0]
-        y_true.append(int(target))
-        y_pred.append(int(np.argmax(scores)))
+def evaluate_float(model, ds, test_rows, image_size, labels, batch_size=32):
+    test_ds = make_tf_dataset(ds, test_rows, image_size, batch_size, False)
+    scores = model.predict(test_ds, verbose=0)
+    y_true = [int(target) for _, target, _ in test_rows]
+    y_pred = [int(index) for index in np.argmax(scores, axis=1)]
     return metrics_from_predictions(y_true, y_pred, labels)
 
 
@@ -443,6 +455,7 @@ def enforce_release_gates(args, metrics, labels):
 
 def main():
     args = parse_args()
+    print_tensorflow_runtime()
     if args.no_imagenet:
         args.init = "scratch"
     if args.smoke:
@@ -490,7 +503,9 @@ def main():
         json.dumps(histories, indent=2), encoding="utf-8"
     )
 
-    float_metrics = evaluate_float(model, ds, test_rows, args.image_size, labels)
+    float_metrics = evaluate_float(
+        model, ds, test_rows, args.image_size, labels, args.batch_size
+    )
     keras_path = args.output / "plant_health.keras"
     model.save(keras_path)
     (args.output / "labels.txt").write_text("\n".join(labels) + "\n", encoding="utf-8")

@@ -38,6 +38,34 @@ python training/train_tf_mobilenetv2.py --task binary --smoke
 
 Artifacts are written under `training/output/agrivision-mobilenetv2/`.
 
+## Kaggle GPU — recommended official training path
+
+Use GitHub as the source of truth for code, configuration, and reproducibility. Use Kaggle for GPU-backed training of the official model lineage. After held-out FLOAT and INT8 evaluation passes the release gate, Hugging Face can be used for the validated model release. Raspberry Pi 4 + Coral USB Accelerator remains the deployment target after Edge TPU compilation and hardware smoke testing.
+
+Recommended Kaggle command:
+
+```bash
+python training/kaggle_train.py
+```
+
+The Kaggle runner keeps the official lineage fixed:
+
+- dataset: `geraldmc/plantvillage-full`
+- revision: `v0.1.0`
+- task: binary `healthy` / `problem`
+- architecture: MobileNetV2 alpha 0.35 at 224x224 RGB
+- initialization: scratch
+- quantization: full integer INT8 TFLite
+
+Current release gates are not lowered:
+
+- INT8 accuracy >= 0.80
+- INT8 balanced accuracy >= 0.75
+- INT8 macro-F1 >= 0.75
+- both `healthy` and `problem` must be predicted
+
+Kaggle metrics are dataset evaluation on PlantVillage-style images. They do not prove field performance under real farm lighting, camera placement, cultivar variation, or disease/stress conditions.
+
 ## Compile for Coral
 
 The Edge TPU compiler runs on supported x86-64 Linux environments. Install the compiler per Coral documentation, then:
