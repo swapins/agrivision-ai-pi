@@ -20,7 +20,7 @@
   </header>
 
   {% if simulation %}
-  <div class="simulation-banner">SIMULATION MODE — NO CLAIM OF REAL SENSOR / CAMERA / EDGE TPU OUTPUT</div>
+  <div class="simulation-banner">SIMULATION MODE - NO CLAIM OF REAL SENSOR / CAMERA / EDGE TPU OUTPUT</div>
   {% endif %}
 
   <main class="shell">
@@ -45,12 +45,15 @@
           <div class="metric"><span>Irrigation</span><strong id="pump">-</strong></div>
         </div>
         <div class="last">Last scan: <b id="last">-</b></div>
+        {% if simulation %}
+        <div class="simulation-note">Displayed soil, climate, image and prediction values are simulated placeholders.</div>
+        {% endif %}
       </div>
     </section>
 
     <section class="info-grid">
       <article><b>SEE</b><span>Camera captures the leaf.</span></article>
-      <article><b>THINK</b><span>Coral Edge TPU runs the neural network locally.</span></article>
+      <article><b>THINK</b><span>{% if simulation %}Simulator returns placeholder predictions without Coral hardware.{% else %}Coral Edge TPU runs the neural network locally.{% endif %}</span></article>
       <article><b>WATER</b><span>Soil sensor triggers safe low-voltage irrigation.</span></article>
       <article><b>PROTECT</b><span>LEDs, buzzer and dashboard make the result visible.</span></article>
     </section>
