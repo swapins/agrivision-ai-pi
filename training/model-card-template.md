@@ -13,10 +13,12 @@ license: mit
 # AgriVision AI — MobileNetV2 Plant Health Classifier
 
 **Developer:** Isis Saritha Swapin  
+**School:** Syndesmos Public School, Parumala, Thiruvalla  
+**Current class:** Class 8  
 **Contributor:** Swapin Vidya  
 **Project:** PeachBot AgriVision AI
 
-This model is developed for **AgriVision AI** by **Isis Saritha Swapin**, Class VIII PeachBot Author. **Swapin Vidya** is credited as project contributor.
+This model is developed for **AgriVision AI** by **Isis Saritha Swapin**, who is studying in **Class 8 at Syndesmos Public School, Parumala, Thiruvalla**, and is a PeachBot Author. **Swapin Vidya** is credited as project contributor.
 
 ## Intended use
 
@@ -37,7 +39,7 @@ The default training pipeline uses `geraldmc/plantvillage-full`, preserving its 
 
 ## Important limitation
 
-PlantVillage images are largely captured under controlled backgrounds. Strong held-out performance on this dataset does **not** establish robustness in real farms. This is a school/research prototype, not a crop-diagnosis device. Predictions should be phrased as possible visible disease/problem and confirmed by appropriate agricultural expertise.
+PlantVillage images are largely captured under controlled backgrounds. Strong held-out performance on this dataset does **not** establish robustness in real farms. This is a student-developed school science and technology project, not a crop-diagnosis device. Predictions should be phrased as possible visible disease/problem and confirmed by appropriate agricultural expertise.
 
 ## Reproducibility
 
