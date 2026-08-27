@@ -1,31 +1,69 @@
-# Model design and scientific scope
+# Model Design And Scientific Scope
 
-## Why MobileNetV2
+## Official Release
 
-AgriVision AI targets a Raspberry Pi 4 plus Coral USB Accelerator. MobileNetV2 is compact, widely supported, and is a natural fit for integer edge inference. The training pipeline defaults to width multiplier `alpha=0.35` and 224×224 RGB images to reduce compute while retaining enough spatial detail for a school demonstration.
+AgriVision AI uses the published PeachBot AI model release:
 
-## Default classification task
+https://huggingface.co/peachbotAI/agrivision-mobilenetv2-edge-tpu
 
-The recommended first release is **Healthy vs Problem** using PlantVillage. A multiclass mode preserves all source disease classes.
+Expected release files:
 
-The project PDF originally describes Healthy / Disease / Stress as a three-class image classifier. This repository avoids creating an unsupported visual `stress` label from synthetic yellowing or by mixing unrelated datasets without validation. Instead:
+- `plant_health_int8.tflite`
+- `plant_health_edgetpu.tflite`
+- `labels.txt`
+- `model_manifest.json`
+- `training_history.json`
+- `README.md`
 
-- vision model: healthy / disease-problem (or exact disease class),
-- soil sensor: actual water-stress signal,
-- dashboard: can still show HEALTHY / DISEASE / STRESS based on the appropriate evidence source.
+Runtime deployment requires:
 
-If a validated visual-stress dataset is later added, the runtime already understands labels containing `stress`, `wilt`, or `yellow`.
+- `models/plant_health_edgetpu.tflite`
+- `models/labels.txt`
 
-## Dataset
+Use `python3 scripts/fetch_models.py` to download the public release artifacts.
 
-Default: `geraldmc/plantvillage-full` on Hugging Face.
+## Lineage
 
-Training respects its source `split` metadata and constructs validation data by deterministic hashing of `leaf_id`, so the same physical leaf does not intentionally appear in both train and validation folds.
+- Dataset: `geraldmc/plantvillage-full`
+- Dataset revision: `v0.1.0`
+- Dataset license: CC0-1.0
+- Task: binary `healthy` / `problem`
+- Architecture: MobileNetV2 alpha 0.35
+- Input: 224x224 RGB
+- Initialization: scratch
+- Export: full integer UINT8 TensorFlow Lite
+- Deployment target: Raspberry Pi 4 + Google Coral USB Accelerator
+
+## Metrics
+
+| Artifact | Accuracy | Balanced accuracy | Macro-F1 |
+|---|---:|---:|---:|
+| FLOAT | 0.9865728900255755 | 0.9823966671562662 | 0.9830538063308789 |
+| INT8 | 0.9857508220679576 | 0.9809942841356456 | 0.9820030388618228 |
+
+Defensible wording: **98.58% held-out INT8 test accuracy on the PlantVillage dataset.**
+
+Do not call this field accuracy. The dataset contains controlled-background plant leaf images.
+
+## Coral Compilation
+
+- Edge TPU Compiler: 16.0.384591198
+- Compiled artifact: `plant_health_edgetpu.tflite`
+- Compiler result: 69 ops mapped to Edge TPU, 0 ops on CPU
+
+Do not claim Coral inference from an uncompiled CPU-only `.tflite` file. The runtime expects the compiled Edge TPU artifact outside simulation mode.
+
+## Labels And Runtime Mapping
+
+The release is a binary classifier:
+
+- `healthy`
+- `problem`
+
+The dashboard maps healthy outputs to `HEALTHY`. Problem outputs are shown as `DISEASE` / possible visible disease-problem so the exhibition can demonstrate alert behavior without claiming a specific field diagnosis.
+
+Water stress is demonstrated through the soil sensor. The project does not fabricate a visual stress class from unrelated data.
 
 ## Limitations
 
-PlantVillage contains controlled-background leaf imagery. A model can score highly on held-out PlantVillage data while performing much worse in field conditions. Do not use the model as professional agricultural diagnosis. Use fixed lighting / camera distance at the exhibition and show `UNCERTAIN` when confidence is low.
-
-## Optional field robustness test
-
-A later research extension can evaluate on PlantDoc, which contains more heterogeneous real-world imagery. Treat this as a domain-shift test, not as a direct replacement for crop-specific field validation.
+PlantVillage is useful for a controlled school proof of concept, but real farms introduce lighting, background, camera, cultivar, and disease-stage differences. Keep the `UNCERTAIN` pathway enabled and validate physically on the Pi/Coral before presenting a hardware demo.

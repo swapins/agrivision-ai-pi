@@ -1,13 +1,21 @@
-# Step 2 — AgriVision AI Model Release Plan
+# Step 2 - AgriVision AI Model Release Notes
 
 **Developer:** Isis Saritha Swapin  
 **Contributor:** Swapin Vidya  
 **Publisher:** PeachBot AI
 
-Target model repository: `peachbotAI/agrivision-mobilenetv2-edge-tpu`.
+Official model repository:
 
-The first official release is a binary `healthy` / `problem` MobileNetV2 alpha 0.35 model at 224×224, trained from scratch on the CC0 PlantVillage release, evaluated on its held-out leaf-grouped test assignment, quantized to full-integer INT8 TFLite, and gated before publication.
+`peachbotAI/agrivision-mobilenetv2-edge-tpu`
 
-ImageNet initialization remains available only as an explicitly marked research/educational comparison and is not the default official PeachBot release lineage.
+The official release is a binary `healthy` / `problem` MobileNetV2 alpha 0.35 model at 224x224 RGB, trained from scratch on `geraldmc/plantvillage-full` revision `v0.1.0`, evaluated on held-out PlantVillage data, quantized to full-integer UINT8 TFLite, and compiled for Coral Edge TPU.
 
-Publication should use Hugging Face Trusted Publishers/OIDC from `swapins/agrivision-ai-pi` / `main` / `train-and-publish-hf.yml`, avoiding a permanent Hugging Face token in GitHub secrets.
+Release artifacts are downloaded for Pi deployment with:
+
+```bash
+python3 scripts/fetch_models.py
+```
+
+Release wording must remain cautious: 98.58% held-out INT8 test accuracy on the PlantVillage dataset, not field accuracy.
+
+Full training and publication workflows are manual-only. Do not publish a new Hugging Face model unless a new official release has been intentionally trained and validated.
