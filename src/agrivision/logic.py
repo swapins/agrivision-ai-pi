@@ -21,13 +21,7 @@ def moisture_percent(raw: float, dry_raw: float, wet_raw: float) -> float:
 
 
 def label_to_health_status(label: str, confidence: float, minimum: float) -> HealthStatus:
-    """Map flexible model labels to the three exhibition statuses.
-
-    A multiclass disease label such as ``Tomato___Late_blight`` maps to
-    DISEASE, while any label containing ``healthy`` maps to HEALTHY.
-    Dedicated stress labels map to STRESS. Low-confidence outputs become
-    UNCERTAIN.
-    """
+    """Map supported model labels to exhibition statuses without guessing unknown labels."""
     if confidence < minimum:
         return HealthStatus.UNCERTAIN
     low = label.strip().lower().replace("-", "_")
@@ -37,8 +31,8 @@ def label_to_health_status(label: str, confidence: float, minimum: float) -> Hea
         return HealthStatus.STRESS
     if low in {"problem", "unhealthy", "disease", "diseased"}:
         return HealthStatus.DISEASE
-    # For PlantVillage multiclass labels, every non-healthy class is a disease class.
-    if "___" in label or low:
+    # PlantVillage multiclass disease labels use the crop___condition convention.
+    if "___" in label:
         return HealthStatus.DISEASE
     return HealthStatus.UNCERTAIN
 

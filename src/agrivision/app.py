@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import atexit
 import os
+import signal
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, send_file
@@ -83,7 +84,16 @@ def create_app() -> Flask:
 def main() -> None:
     app = create_app()
     cfg = app.config["AGRIVISION_CONFIG"]
+    controller = app.config["AGRIVISION_CONTROLLER"]
     server = cfg.section("server")
+
+    def shutdown_handler(signum, _frame):
+        controller.close()
+        raise SystemExit(128 + int(signum))
+
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
+
     app.run(
         host=str(server.get("host", "0.0.0.0")),
         port=int(server.get("port", 5000)),

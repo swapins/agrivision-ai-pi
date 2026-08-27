@@ -8,7 +8,7 @@ from agrivision.app import create_app
 from agrivision.config import AppConfig, load_config
 from agrivision.controller import AgriVisionController
 from agrivision.hardware import EnvironmentReading, Hardware
-from agrivision.inference import Inferencer, Prediction
+from agrivision.inference import Inferencer, Prediction, SimulatedInferencer
 from agrivision.logic import HealthStatus
 from agrivision.state import RuntimeState, StateStore
 
@@ -73,6 +73,11 @@ def test_simulation_health_and_status_are_explicit(monkeypatch):
     assert "no Coral inference" in health["coral_status"]
     assert status["simulation"] is True
     assert status["backend"] == "simulation"
+
+
+def test_simulation_uses_official_binary_labels(tmp_path):
+    predictions = SimulatedInferencer().predict(tmp_path / "unused.jpg", top_k=3)
+    assert [prediction.label for prediction in predictions] == ["healthy", "problem"]
 
 
 def test_non_simulation_requires_model_files(monkeypatch, tmp_path):

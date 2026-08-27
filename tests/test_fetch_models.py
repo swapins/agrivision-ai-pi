@@ -13,6 +13,7 @@ spec.loader.exec_module(fetch_models)
 expected_sha = fetch_models.expected_sha
 sha256_file = fetch_models.sha256_file
 verify_models = fetch_models.verify_models
+install_downloads = fetch_models.install_downloads
 
 
 def test_sha256_file(tmp_path):
@@ -24,6 +25,7 @@ def test_sha256_file(tmp_path):
 def test_expected_sha_reads_manifest_shapes():
     digest = "a" * 64
     assert expected_sha({"edge_tpu_sha256": digest}, "plant_health_edgetpu.tflite") == digest
+    assert expected_sha({"edge_tpu_model_sha256": digest}, "plant_health_edgetpu.tflite") == digest
     assert expected_sha({"files": {"plant_health_edgetpu.tflite": {"sha256": digest}}}, "plant_health_edgetpu.tflite") == digest
 
 
@@ -35,3 +37,24 @@ def test_verify_models_detects_checksum_mismatch(tmp_path):
     )
     with pytest.raises(SystemExit, match="Checksum mismatch"):
         verify_models(tmp_path)
+
+
+def test_failed_staged_verification_preserves_existing_release(tmp_path):
+    models = tmp_path / "models"
+    models.mkdir()
+    existing = models / "plant_health_edgetpu.tflite"
+    existing.write_bytes(b"known-good")
+
+    staged = {}
+    for name in fetch_models.REQUIRED_FILES:
+        path = tmp_path / f"staged-{name}"
+        if name == "model_manifest.json":
+            path.write_text(json.dumps({"edge_tpu_model_sha256": "0" * 64}), encoding="utf-8")
+        else:
+            path.write_bytes(b"replacement")
+        staged[name] = path
+
+    with pytest.raises(SystemExit, match="Checksum mismatch"):
+        install_downloads(staged, models)
+
+    assert existing.read_bytes() == b"known-good"

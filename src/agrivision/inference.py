@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 from PIL import Image
 
@@ -96,8 +95,9 @@ class SimulatedInferencer(Inferencer):
     def predict(self, image_path: Path, top_k: int = 3) -> list[Prediction]:
         if top_k < 1:
             raise ValueError("top_k must be at least 1")
-        # Intentionally deterministic and clearly simulation-only.
-        return [Prediction("healthy", 0.93), Prediction("disease", 0.05), Prediction("stress", 0.02)][:top_k]
+        # Deliberately deterministic and limited to the official binary labels.
+        # These are UI-development values only and are never represented as Coral output.
+        return [Prediction("healthy", 0.93), Prediction("problem", 0.07)][:top_k]
 
 
 def _read_labels(path: Path) -> dict[int, str]:

@@ -16,7 +16,9 @@ def test_label_mapping():
     assert label_to_health_status("Tomato___healthy", .95, .6) == HealthStatus.HEALTHY
     assert label_to_health_status("Tomato___Late_blight", .95, .6) == HealthStatus.DISEASE
     assert label_to_health_status("water_stress", .95, .6) == HealthStatus.STRESS
+    assert label_to_health_status("problem", .95, .6) == HealthStatus.DISEASE
     assert label_to_health_status("healthy", .4, .6) == HealthStatus.UNCERTAIN
+    assert label_to_health_status("unexpected_label", .99, .6) == HealthStatus.UNCERTAIN
 
 
 def test_irrigation_decision():
