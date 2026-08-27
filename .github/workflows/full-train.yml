@@ -1,14 +1,6 @@
 name: full-model-training
 
 on:
-  push:
-    branches:
-      - main
-      - fix/model-collapse-diagnostics
-    paths:
-      - 'training/train_tf_mobilenetv2.py'
-      - 'training/requirements.txt'
-      - '.github/workflows/full-train.yml'
   workflow_dispatch:
 
 jobs:

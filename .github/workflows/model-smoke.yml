@@ -1,11 +1,6 @@
 name: model-smoke
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'training/**'
-      - '.github/workflows/model-smoke.yml'
   workflow_dispatch:
 
 jobs:
