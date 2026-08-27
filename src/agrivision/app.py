@@ -20,7 +20,7 @@ def create_app() -> Flask:
     hardware = make_hardware(cfg, simulation)
     inferencer = make_inferencer(cfg, simulation)
     store = StateStore(RuntimeState(simulation=simulation))
-    controller = AgriVisionController(cfg, hardware, inferencer, store)
+    controller = AgriVisionController(cfg, hardware, inferencer, store, simulation=simulation)
     controller.start_background()
 
     app = Flask(__name__, template_folder="templates", static_folder="static")

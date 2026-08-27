@@ -13,11 +13,19 @@ from .state import StateStore
 
 
 class AgriVisionController:
-    def __init__(self, cfg: AppConfig, hardware: Hardware, inferencer: Inferencer, state: StateStore):
+    def __init__(
+        self,
+        cfg: AppConfig,
+        hardware: Hardware,
+        inferencer: Inferencer,
+        state: StateStore,
+        simulation: bool = False,
+    ):
         self.cfg = cfg
         self.hardware = hardware
         self.inferencer = inferencer
         self.state = state
+        self.simulation = simulation
         self.stop_event = threading.Event()
         self._last_pump_time = 0.0
         self._pump_lock = threading.Lock()
@@ -98,9 +106,15 @@ class AgriVisionController:
         min_conf = float(model_cfg.get("confidence_min", 0.60))
         top_k = int(model_cfg.get("top_k", 3))
 
-        self.state.update(message="Capturing leaf image…")
+        if self.simulation:
+            self.state.update(message="Capturing simulated leaf image - no real camera used")
+        else:
+            self.state.update(message="Capturing leaf image...")
         self.hardware.capture(self.capture_path)
-        self.state.update(message="Analysing on Edge TPU…")
+        if self.simulation:
+            self.state.update(message="Running simulated inference - no Coral Edge TPU used")
+        else:
+            self.state.update(message="Analysing on Edge TPU...")
         predictions = self.inferencer.predict(self.capture_path, top_k=top_k)
         if not predictions:
             status = HealthStatus.UNCERTAIN
@@ -120,7 +134,9 @@ class AgriVisionController:
         elif status == HealthStatus.HEALTHY:
             message = "Plant appears healthy"
         else:
-            message = "Low-confidence result — scan again under controlled lighting"
+            message = "Low-confidence result - scan again under controlled lighting"
+        if self.simulation:
+            message = f"SIMULATION result - {message.lower()}"
 
         top_payload = [
             {"label": p.label, "confidence": round(p.confidence * 100.0, 1)}
@@ -140,6 +156,7 @@ class AgriVisionController:
             "label": top_label,
             "confidence": round(top_score * 100.0, 1),
             "top_predictions": top_payload,
+            "simulation": self.simulation,
         }
 
     def close(self) -> None:
