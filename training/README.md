@@ -1,76 +1,91 @@
-# Training and model release
+# Training And Model Release
 
 **Project developer:** Isis Saritha Swapin  
 **Contributor:** Swapin Vidya  
-**Brand:** PeachBot
+**Publisher:** PeachBot AI
 
-## Selected base model
+## Official Release
 
-**MobileNetV2 alpha 0.35 at 224×224** is the default. It is small, fast, well understood, and designed for mobile/edge inference. The project uses transfer learning, then exports a fully integer INT8 TFLite model for the Coral compiler.
+The validated model is published at:
 
-## Dataset choice
+https://huggingface.co/peachbotAI/agrivision-mobilenetv2-edge-tpu
 
-The default is `geraldmc/plantvillage-full` because it packages 54k+ PlantVillage images with metadata and a leaf-grouped held-out split. A `--smoke` mode uses `geraldmc/plantvillage-tiny` only to verify code; the tiny dataset is explicitly not suitable for final claims.
-
-The reliable first release is `--task binary`:
-
-- `healthy`
-- `problem`
-
-This is deliberately simpler than inventing a visual “stress” class from unrelated datasets. The physical project already demonstrates water stress with the soil sensor. Use `--task multiclass` if you want the full PlantVillage disease classes.
-
-## Train
-
-Use a Linux/Colab environment with TensorFlow 2.15 and, ideally, a GPU:
+Runtime deployments should download the public release with:
 
 ```bash
-python -m venv .venv-train
-source .venv-train/bin/activate
-pip install -r training/requirements.txt
-python training/train_tf_mobilenetv2.py --task binary
+python3 scripts/fetch_models.py
 ```
 
-Fast pipeline smoke test only:
+## Lineage
+
+The official training path is fixed:
+
+- Dataset: `geraldmc/plantvillage-full`
+- Dataset revision: `v0.1.0`
+- Dataset license: CC0-1.0
+- Task: binary `healthy` / `problem`
+- Architecture: MobileNetV2 alpha 0.35 at 224x224 RGB
+- Initialization: scratch
+- Export: full integer UINT8 TFLite
+- Target: Raspberry Pi 4 + Coral USB Accelerator
+
+Do not change this lineage or lower release quality gates when reproducing the official model.
+
+## Kaggle GPU Path
+
+Use GitHub as the source of truth for code and Kaggle for GPU-backed reproduction:
 
 ```bash
-python training/train_tf_mobilenetv2.py --task binary --smoke
+python training/kaggle_train.py
 ```
 
-Artifacts are written under `training/output/agrivision-mobilenetv2/`.
+The notebook `training/kaggle_train.ipynb` is provided for Kaggle's notebook UI.
 
-## Compile for Coral
+Do not run full PlantVillage training on a normal development PC. The `--smoke` option is only for checking the pipeline and cannot support release claims.
 
-The Edge TPU compiler runs on supported x86-64 Linux environments. Install the compiler per Coral documentation, then:
+## Local Smoke Test
 
 ```bash
-training/compile_edgetpu.sh
+python training/train_tf_mobilenetv2.py --task binary --init scratch --smoke
 ```
 
-Read the compiler summary. Do not claim Coral acceleration if the model has not been compiled and validated.
+Smoke artifacts are explicitly marked non-release in `model_manifest.json`.
 
-## Publish to Hugging Face
+## Metrics From Official Release
 
-Authenticate locally without embedding a token in the repository:
+| Artifact | Accuracy | Balanced accuracy | Macro-F1 |
+|---|---:|---:|---:|
+| FLOAT | 0.9865728900255755 | 0.9823966671562662 | 0.9830538063308789 |
+| INT8 | 0.9857508220679576 | 0.9809942841356456 | 0.9820030388618228 |
+
+Use this wording:
+
+> 98.58% held-out INT8 test accuracy on the PlantVillage dataset.
+
+Do not call it field accuracy.
+
+## Coral Compilation
+
+The official release includes:
+
+- `plant_health_int8.tflite`
+- `plant_health_edgetpu.tflite`
+- `labels.txt`
+- `model_manifest.json`
+- `training_history.json`
+
+Compilation facts:
+
+- Edge TPU Compiler: 16.0.384591198
+- 69 ops mapped to Edge TPU
+- 0 ops on CPU
+
+Verify on the Pi/Coral:
 
 ```bash
-hf auth login
-python training/publish_hf.py --repo-id YOUR_HF_USERNAME/agrivision-mobilenetv2-edge-tpu
+python3 scripts/coral_smoke_test.py path/to/leaf.jpg
 ```
 
-The publishing script uploads the INT8 model, compiled Edge TPU model if present, labels, manifest, and model card.
+## Publishing
 
-### GitHub Actions publication
-
-After this repository is hosted on GitHub, you may also add a repository secret named `HF_TOKEN` and manually run `.github/workflows/train-and-publish-hf.yml`. The workflow refuses to publish a `--smoke` run, so the debug dataset cannot accidentally become the final Hugging Face release.
-
-## Recommended release gate
-
-Before calling a model “final”:
-
-1. Train on the full dataset, not the debug subset.
-2. Preserve leaf-level split integrity.
-3. Record float and INT8 held-out metrics in `model_manifest.json`.
-4. Confirm the Edge TPU compiler succeeds.
-5. Run `scripts/coral_smoke_test.py` on the actual Raspberry Pi + Coral.
-6. Test at least 10 previously unseen exhibition images/cards under the actual room lighting.
-7. Keep the UI confidence threshold and `UNCERTAIN` result enabled.
+Do not publish new Hugging Face artifacts unless you intentionally trained and validated a new official release. Never commit tokens or model binaries.

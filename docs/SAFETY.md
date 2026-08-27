@@ -9,5 +9,7 @@
 - Limit pump runtime and impose a cooldown in software.
 - Secure tubing so it cannot spray the electronics.
 - Do not leave the pump running unattended.
+- Use the dashboard **PUMP OFF** control or stop the service if any tubing, wiring or water placement looks wrong.
 - Use a protective cover around Pi/Coral connections if many students will handle the model.
 - AI predictions are demonstration outputs, not professional agronomic advice.
+- Simulation mode must be labeled as simulation and must not be shown as real sensor, camera or Coral output.

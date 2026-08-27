@@ -19,16 +19,47 @@ OFFICIAL_DATASET = "geraldmc/plantvillage-full"
 OFFICIAL_REVISION = "v0.1.0"
 
 
-def validate_release(manifest: dict, require_official: bool, min_accuracy: float | None):
+def validate_release(
+    manifest: dict,
+    require_official: bool,
+    min_accuracy: float | None,
+    min_balanced_accuracy: float | None,
+    min_macro_f1: float | None,
+    require_all_classes_predicted: bool,
+):
     if manifest.get("smoke_dataset"):
         raise SystemExit("Refusing to publish a smoke/debug model.")
 
-    int8_metrics = manifest.get("int8_test_metrics") or {}
-    measured = float(int8_metrics.get("accuracy", 0.0))
-    if min_accuracy is not None and measured < min_accuracy:
-        raise SystemExit(
-            f"Refusing publication: INT8 accuracy {measured:.4f} < {min_accuracy:.4f}."
+    metrics = manifest.get("int8_test_metrics") or {}
+    requirements = {
+        "accuracy": min_accuracy,
+        "balanced_accuracy": min_balanced_accuracy,
+        "macro_f1": min_macro_f1,
+    }
+    failures = []
+    for name, minimum in requirements.items():
+        measured = float(metrics.get(name, 0.0))
+        if minimum is not None and measured < minimum:
+            failures.append(f"INT8 {name} {measured:.4f} < {minimum:.4f}")
+
+    labels = manifest.get("labels") or []
+    prediction_counts = metrics.get("prediction_counts") or {}
+    classes_predicted = int(
+        metrics.get(
+            "classes_predicted",
+            sum(int(prediction_counts.get(label, 0)) > 0 for label in labels),
         )
+    )
+    if require_all_classes_predicted and classes_predicted != len(labels):
+        failures.append(
+            f"INT8 predicted {classes_predicted}/{len(labels)} classes; "
+            f"distribution={prediction_counts}"
+        )
+    if metrics.get("collapsed_prediction") is True:
+        failures.append("INT8 evaluation is explicitly marked as collapsed_prediction=true")
+
+    if failures:
+        raise SystemExit("Refusing publication: " + "; ".join(failures))
 
     if require_official:
         checks = {
@@ -52,24 +83,32 @@ def validate_release(manifest: dict, require_official: bool, min_accuracy: float
 def main():
     p = argparse.ArgumentParser()
     p.add_argument(
-        "--repo-id",
-        required=True,
+        "--repo-id", required=True,
         help="e.g. peachbotAI/agrivision-mobilenetv2-edge-tpu",
     )
     p.add_argument(
-        "--artifact-dir",
-        type=Path,
+        "--artifact-dir", type=Path,
         default=Path("training/output/agrivision-mobilenetv2"),
     )
     p.add_argument("--require-official-lineage", action="store_true")
     p.add_argument("--min-int8-accuracy", type=float, default=None)
+    p.add_argument("--min-int8-balanced-accuracy", type=float, default=None)
+    p.add_argument("--min-int8-macro-f1", type=float, default=None)
+    p.add_argument("--require-all-classes-predicted", action="store_true")
     args = p.parse_args()
 
     manifest_path = args.artifact_dir / "model_manifest.json"
     if not manifest_path.exists():
         raise SystemExit(f"Missing model manifest: {manifest_path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    validate_release(manifest, args.require_official_lineage, args.min_int8_accuracy)
+    validate_release(
+        manifest,
+        args.require_official_lineage,
+        args.min_int8_accuracy,
+        args.min_int8_balanced_accuracy,
+        args.min_int8_macro_f1,
+        args.require_all_classes_predicted,
+    )
 
     token = os.environ.get("HF_TOKEN")
     if not token:
@@ -86,6 +125,7 @@ def main():
         "plant_health_int8.tflite",
         "labels.txt",
         "model_manifest.json",
+        "training_history.json",
         "README.md",
     ]
     for name in wanted:

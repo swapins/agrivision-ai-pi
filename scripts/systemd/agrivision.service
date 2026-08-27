@@ -1,15 +1,18 @@
 [Unit]
 Description=AgriVision AI Smart Farm
 After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/agrivision-ai-pi
 Environment=PYTHONPATH=/home/pi/agrivision-ai-pi/src
-ExecStart=/usr/bin/python3 -m agrivision.app
+ExecStart=/home/pi/agrivision-ai-pi/scripts/run.sh
 Restart=on-failure
-RestartSec=3
+RestartSec=5
+TimeoutStopSec=15
 
 [Install]
 WantedBy=multi-user.target

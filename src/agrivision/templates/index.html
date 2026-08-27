@@ -9,18 +9,22 @@
 <body data-simulation="{{ 'true' if simulation else 'false' }}">
   <header class="topbar">
     <div>
-      <div class="brandrow"><img class="peachbot-logo" src="{{ url_for('static', filename='peachbot-logo.svg') }}" alt="PeachBot"><div class="brandline">STEM PROJECT</div></div>
+      <div class="brandrow">
+        <img class="peachbot-logo" src="{{ url_for('static', filename='peachbot-logo.svg') }}" alt="PeachBot">
+        <div class="brandline">STEM PROJECT</div>
+      </div>
       <h1>AgriVision <span>AI</span></h1>
-      <p>Raspberry Pi + Coral Edge TPU Smart Farm</p>
+      <p>Raspberry Pi 4 + Coral Edge TPU Smart Farm</p>
     </div>
     <div class="author">
       <b>{{ project.get('author','Isis Saritha Swapin') }}</b>
-      <span>Class {{ project.get('class','VIII') }} · PeachBot Author</span>
+      <span>Class {{ project.get('class','VIII') }} | PeachBot AI</span>
+      <span>Contributor: {{ project.get('contributor','Swapin Vidya') }}</span>
     </div>
   </header>
 
   {% if simulation %}
-  <div class="simulation-banner">SIMULATION MODE — NO CLAIM OF REAL SENSOR / CAMERA / EDGE TPU OUTPUT</div>
+  <div class="simulation-banner">SIMULATION MODE - NO REAL SENSOR, CAMERA, OR CORAL EDGE TPU OUTPUT</div>
   {% endif %}
 
   <main class="shell">
@@ -28,31 +32,38 @@
       <div class="camera-panel">
         <div class="eyebrow">LEAF SCANNER</div>
         <div class="image-wrap"><img id="leaf" src="/latest.jpg" alt="Latest leaf capture" onerror="this.style.opacity=.15"></div>
-        <button id="scanBtn" onclick="scanLeaf()">SCAN LEAF</button>
+        <button id="scanBtn" type="button" onclick="scanLeaf()">SCAN LEAF</button>
         <div id="scanMessage" class="muted">Place a leaf in the marked scan area.</div>
+        <div id="modeNote" class="mode-note"></div>
       </div>
 
       <div class="status-panel">
         <div class="eyebrow">SMART FARM STATUS</div>
         <div id="plant" class="plant-status neutral">NOT SCANNED</div>
+        <div class="label-row"><span>Runtime mode</span><strong id="runtimeMode">-</strong></div>
+        <div class="label-row"><span>Inference backend</span><strong id="backend">-</strong></div>
+        <div class="label-row"><span>Coral status</span><strong id="coralStatus">-</strong></div>
         <div class="label-row"><span>Model label</span><strong id="rawLabel">-</strong></div>
         <div class="label-row"><span>Confidence</span><strong id="confidence">-</strong></div>
 
         <div class="metric-grid">
           <div class="metric"><span>Soil moisture</span><strong id="soil">-</strong></div>
+          <div class="metric"><span>Raw soil ADC</span><strong id="rawSoil">-</strong></div>
           <div class="metric"><span>Temperature</span><strong id="temp">-</strong></div>
           <div class="metric"><span>Humidity</span><strong id="hum">-</strong></div>
           <div class="metric"><span>Irrigation</span><strong id="pump">-</strong></div>
+          <div class="metric"><span>Pump reason</span><strong id="pumpReason">-</strong></div>
         </div>
-        <div class="last">Last scan: <b id="last">-</b></div>
+        <div class="last">Last scan: <b id="last">-</b> | Last inference: <b id="lastInference">-</b> | Latency: <b id="latency">-</b></div>
+        <button id="pumpOffBtn" class="danger" type="button" onclick="pumpOff()">PUMP OFF</button>
       </div>
     </section>
 
     <section class="info-grid">
-      <article><b>SEE</b><span>Camera captures the leaf.</span></article>
-      <article><b>THINK</b><span>Coral Edge TPU runs the neural network locally.</span></article>
-      <article><b>WATER</b><span>Soil sensor triggers safe low-voltage irrigation.</span></article>
-      <article><b>PROTECT</b><span>LEDs, buzzer and dashboard make the result visible.</span></article>
+      <article><b>SEE</b><span>Camera captures the leaf on the Raspberry Pi.</span></article>
+      <article><b>THINK</b><span>Coral Edge TPU runs the validated neural network locally.</span></article>
+      <article><b>WATER</b><span>Soil sensor triggers bounded low-voltage irrigation.</span></article>
+      <article><b>PROTECT</b><span>LEDs, buzzer, and dashboard show cautious status.</span></article>
     </section>
 
     <section class="predictions-card">
@@ -61,7 +72,7 @@
     </section>
   </main>
 
-  <footer>School prototype · Local edge inference · Not professional agricultural diagnosis</footer>
+  <footer>School prototype | Local edge inference | Not professional agricultural diagnosis</footer>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

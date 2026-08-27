@@ -13,11 +13,19 @@ from .state import StateStore
 
 
 class AgriVisionController:
-    def __init__(self, cfg: AppConfig, hardware: Hardware, inferencer: Inferencer, state: StateStore):
+    def __init__(
+        self,
+        cfg: AppConfig,
+        hardware: Hardware,
+        inferencer: Inferencer,
+        state: StateStore,
+        simulation: bool = False,
+    ):
         self.cfg = cfg
         self.hardware = hardware
         self.inferencer = inferencer
         self.state = state
+        self.simulation = simulation
         self.stop_event = threading.Event()
         self._last_pump_time = 0.0
         self._pump_lock = threading.Lock()
@@ -40,11 +48,20 @@ class AgriVisionController:
                     soil=round(reading.soil_percent, 1),
                     temperature=round(reading.temperature_c, 1),
                     humidity=round(reading.humidity_percent, 1),
+                    raw_soil=reading.raw_soil,
+                    backend=self.inferencer.backend_name,
+                    coral_status=self.inferencer.coral_status,
+                    error="",
                 )
                 self._maybe_irrigate(reading.soil_percent)
             except Exception as exc:
                 self.hardware.pump_off()
-                self.state.update(pump="OFF", message=f"Sensor error: {exc}")
+                self.state.update(
+                    pump="OFF",
+                    pump_reason="sensor error",
+                    message=f"Sensor error: {exc}",
+                    error=str(exc),
+                )
             self.stop_event.wait(interval)
 
     def _maybe_irrigate(self, moisture: float) -> None:
@@ -56,6 +73,7 @@ class AgriVisionController:
             seconds_since_last_run=time.time() - self._last_pump_time,
             cooldown_seconds=float(pump_cfg["cooldown_seconds"]),
         )
+        self.state.update(pump_reason=decision.reason)
         if not decision.should_start:
             # Never switch a currently-running pump off from this path; the pump worker owns it.
             return
@@ -73,8 +91,13 @@ class AgriVisionController:
         max_seconds = float(pump_cfg["max_run_seconds"])
         stop_above = float(soil_cfg["pump_stop_above_percent"])
         try:
+            prefix = "SIMULATION: " if self.simulation else ""
             self.hardware.pump_on()
-            self.state.update(pump="ON", message="Dry soil — irrigation cycle active")
+            self.state.update(
+                pump="ON",
+                pump_reason="dry soil",
+                message=f"{prefix}Dry soil - irrigation cycle active",
+            )
             deadline = time.time() + max_seconds
             while time.time() < deadline and not self.stop_event.is_set():
                 time.sleep(0.5)
@@ -83,13 +106,14 @@ class AgriVisionController:
                     soil=round(reading.soil_percent, 1),
                     temperature=round(reading.temperature_c, 1),
                     humidity=round(reading.humidity_percent, 1),
+                    raw_soil=reading.raw_soil,
                 )
                 if reading.soil_percent >= stop_above:
                     break
         finally:
             self.hardware.pump_off()
             self._last_pump_time = time.time()
-            self.state.update(pump="OFF", message="Irrigation cycle complete")
+            self.state.update(pump="OFF", pump_reason="cycle complete", message="Irrigation cycle complete")
             lock.release()
 
     def scan_leaf(self) -> dict:
@@ -98,10 +122,17 @@ class AgriVisionController:
         min_conf = float(model_cfg.get("confidence_min", 0.60))
         top_k = int(model_cfg.get("top_k", 3))
 
-        self.state.update(message="Capturing leaf image…")
+        prefix = "SIMULATION: " if self.simulation else ""
+        self.state.update(message=f"{prefix}Capturing leaf image")
         self.hardware.capture(self.capture_path)
-        self.state.update(message="Analysing on Edge TPU…")
+        self.state.update(
+            message=f"{prefix}Analysing image" if self.simulation else "Analysing on Coral Edge TPU",
+            backend=self.inferencer.backend_name,
+            coral_status=self.inferencer.coral_status,
+        )
+        started = time.perf_counter()
         predictions = self.inferencer.predict(self.capture_path, top_k=top_k)
+        latency_ms = (time.perf_counter() - started) * 1000.0
         if not predictions:
             status = HealthStatus.UNCERTAIN
             top_label, top_score = "unknown", 0.0
@@ -114,13 +145,15 @@ class AgriVisionController:
             self.hardware.beep(float(outputs_cfg.get("buzzer_seconds", 0.20)))
 
         if status == HealthStatus.DISEASE:
-            message = "Possible visible disease/problem — inspect the plant"
+            message = "Possible visible disease/problem - inspect the plant"
         elif status == HealthStatus.STRESS:
-            message = "Possible visible stress — inspect water/nutrient conditions"
+            message = "Possible visible stress - inspect water/nutrient conditions"
         elif status == HealthStatus.HEALTHY:
             message = "Plant appears healthy"
         else:
-            message = "Low-confidence result — scan again under controlled lighting"
+            message = "Low-confidence result - scan again under controlled lighting"
+        if self.simulation:
+            message = "SIMULATION: " + message
 
         top_payload = [
             {"label": p.label, "confidence": round(p.confidence * 100.0, 1)}
@@ -132,16 +165,37 @@ class AgriVisionController:
             raw_label=top_label,
             confidence=round(top_score * 100.0, 1),
             last_scan=now,
+            last_inference_at=now,
+            inference_latency_ms=round(latency_ms, 1),
             message=message,
             top_predictions=top_payload,
+            backend=self.inferencer.backend_name,
+            coral_status=self.inferencer.coral_status,
+            error="",
         )
         return {
             "status": status.value,
             "label": top_label,
             "confidence": round(top_score * 100.0, 1),
             "top_predictions": top_payload,
+            "simulation": self.simulation,
+            "backend": self.inferencer.backend_name,
+            "coral_status": self.inferencer.coral_status,
+            "inference_latency_ms": round(latency_ms, 1),
         }
+
+    def emergency_pump_off(self) -> dict:
+        self.hardware.pump_off()
+        self._last_pump_time = time.time()
+        self.state.update(
+            pump="OFF",
+            pump_reason="manual stop",
+            message="Pump manually stopped from dashboard",
+            error="",
+        )
+        return {"pump": "OFF", "reason": "manual stop", "simulation": self.simulation}
 
     def close(self) -> None:
         self.stop_event.set()
+        self.hardware.pump_off()
         self.hardware.close()

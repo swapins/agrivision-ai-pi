@@ -1,14 +1,81 @@
-# Raspberry Pi deployment
+# Raspberry Pi Deployment
 
-1. Flash the compatibility-first Raspberry Pi OS image selected for the Coral/PyCoral stack.
-2. Install Pi packages with `sudo bash scripts/install_pi.sh`.
-3. Enable I²C in `raspi-config` and verify `i2cdetect -y 1`.
-4. Install the Coral runtime with `sudo bash scripts/install_coral.sh`.
-5. Test the Coral with Google's official PyCoral example before using the custom model.
-6. Copy `config.example.yaml` to `config.yaml` and enter actual dry/wet calibration values.
-7. Copy model artifacts into `models/`.
-8. Run `scripts/hardware_selftest.py` with the water tank almost empty first.
-9. Run `scripts/coral_smoke_test.py <known-leaf-image.jpg>`.
-10. Start the dashboard with `scripts/run.sh`.
+Target hardware: Raspberry Pi 4 + Google Coral USB Accelerator.
 
-For exhibition auto-start, edit `scripts/systemd/agrivision.service` if the Pi username/path differs, then install with `sudo scripts/install_service.sh`.
+## First Install
+
+```bash
+git clone https://github.com/swapins/agrivision-ai-pi.git
+cd agrivision-ai-pi
+sudo bash scripts/install_pi.sh
+sudo bash scripts/install_coral.sh
+cp config.example.yaml config.yaml
+python3 scripts/fetch_models.py
+```
+
+Edit `config.yaml` only for real GPIO, pump thresholds, soil calibration values, and server settings. Runtime files such as `config.yaml`, `captures/latest.jpg`, `.venv`, and downloaded model artifacts are not committed.
+
+## Soil Calibration
+
+```bash
+python3 scripts/calibrate_soil.py
+```
+
+Record the actual dry and wet readings in `config.yaml`.
+
+## Hardware Validation
+
+Run the safe self-test first. It does not pulse the pump unless requested.
+
+```bash
+python3 scripts/hardware_selftest.py
+```
+
+After checking MOSFET wiring, separate pump power, tubing, and water isolation:
+
+```bash
+python3 scripts/hardware_selftest.py --pump
+```
+
+Validate the Coral model with a real image:
+
+```bash
+python3 scripts/coral_smoke_test.py path/to/leaf.jpg
+```
+
+## Start Dashboard
+
+```bash
+./scripts/run.sh
+```
+
+Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+or:
+
+```text
+http://<PI-IP>:5000
+```
+
+## Service Mode
+
+If the Pi user or checkout path differs from `/home/pi/agrivision-ai-pi`, edit `scripts/systemd/agrivision.service` first.
+
+```bash
+sudo bash scripts/install_service.sh
+journalctl -u agrivision.service -f
+```
+
+## Simulation Mode
+
+On a development PC:
+
+```bash
+AGRIVISION_SIMULATION=1 python -m agrivision.app
+```
+
+Simulation mode is controlled by `AGRIVISION_SIMULATION=1`. Outside simulation mode, startup requires the deployed Edge TPU model and labels.

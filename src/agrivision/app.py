@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import atexit
 import os
+import signal
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, send_file
 
-from .config import load_config
+from .config import load_config, validate_config
 from .controller import AgriVisionController
 from .hardware import make_hardware
 from .inference import make_inferencer
@@ -16,11 +17,19 @@ from .state import RuntimeState, StateStore
 def create_app() -> Flask:
     cfg = load_config(os.environ.get("AGRIVISION_CONFIG"))
     simulation = os.environ.get("AGRIVISION_SIMULATION", "0").lower() in {"1", "true", "yes"}
+    validate_config(cfg, simulation)
 
     hardware = make_hardware(cfg, simulation)
     inferencer = make_inferencer(cfg, simulation)
-    store = StateStore(RuntimeState(simulation=simulation))
-    controller = AgriVisionController(cfg, hardware, inferencer, store)
+    store = StateStore(
+        RuntimeState(
+            simulation=simulation,
+            backend=inferencer.backend_name,
+            coral_status=inferencer.coral_status,
+            message="Simulation mode active" if simulation else "Hardware mode active",
+        )
+    )
+    controller = AgriVisionController(cfg, hardware, inferencer, store, simulation=simulation)
     controller.start_background()
 
     app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -45,6 +54,10 @@ def create_app() -> Flask:
             store.update(message=f"AI scan error: {exc}")
             return jsonify({"error": str(exc)}), 500
 
+    @app.post("/api/pump/off")
+    def pump_off():
+        return jsonify(controller.emergency_pump_off())
+
     @app.get("/latest.jpg")
     def latest():
         path = controller.capture_path
@@ -54,7 +67,15 @@ def create_app() -> Flask:
 
     @app.get("/health")
     def health():
-        return jsonify({"status": "ok", "simulation": simulation})
+        snapshot = store.snapshot()
+        return jsonify(
+            {
+                "status": "ok",
+                "simulation": simulation,
+                "backend": snapshot["backend"],
+                "coral_status": snapshot["coral_status"],
+            }
+        )
 
     atexit.register(controller.close)
     return app
@@ -63,7 +84,16 @@ def create_app() -> Flask:
 def main() -> None:
     app = create_app()
     cfg = app.config["AGRIVISION_CONFIG"]
+    controller = app.config["AGRIVISION_CONTROLLER"]
     server = cfg.section("server")
+
+    def shutdown_handler(signum, _frame):
+        controller.close()
+        raise SystemExit(128 + int(signum))
+
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
+
     app.run(
         host=str(server.get("host", "0.0.0.0")),
         port=int(server.get("port", 5000)),

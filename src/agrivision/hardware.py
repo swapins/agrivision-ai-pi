@@ -54,15 +54,17 @@ class SimulatedHardware(Hardware):
         self.hum = float(sim.get("default_humidity_percent", 71.0))
         self.pump = False
         self.health = HealthStatus.NOT_SCANNED
+        self._rng = random.Random(260826)
 
     def read_environment(self) -> EnvironmentReading:
-        drift = random.uniform(-0.5, 0.5)
+        drift = self._rng.uniform(-0.5, 0.5)
         if self.pump:
             self.soil = min(100.0, self.soil + 1.0)
         return EnvironmentReading(
             round(self.soil + drift, 1),
-            round(self.temp + random.uniform(-0.2, 0.2), 1),
-            round(self.hum + random.uniform(-0.5, 0.5), 1),
+            round(self.temp + self._rng.uniform(-0.2, 0.2), 1),
+            round(self.hum + self._rng.uniform(-0.5, 0.5), 1),
+            raw_soil=None,
         )
 
     def pump_on(self) -> None:
@@ -75,15 +77,18 @@ class SimulatedHardware(Hardware):
         self.health = status
 
     def beep(self, seconds: float) -> None:
+        if seconds <= 0:
+            return
         time.sleep(min(seconds, 0.05))
 
     def capture(self, destination: Path) -> None:
         # Generate a neutral placeholder instead of pretending to be a real camera frame.
         from PIL import Image, ImageDraw
+
         destination.parent.mkdir(parents=True, exist_ok=True)
         image = Image.new("RGB", (640, 480), "#e8f1e7")
         draw = ImageDraw.Draw(image)
-        draw.text((30, 30), "SIMULATION MODE — NO REAL CAMERA IMAGE", fill="#173d24")
+        draw.text((30, 30), "SIMULATION MODE - NO REAL CAMERA IMAGE", fill="#173d24")
         image.save(destination, quality=90)
 
     def close(self) -> None:
@@ -93,13 +98,19 @@ class SimulatedHardware(Hardware):
 class PiHardware(Hardware):
     def __init__(self, cfg: AppConfig):
         # Imports happen only on the Pi so the package remains testable on a PC.
-        from gpiozero import LED, OutputDevice, Buzzer
-        import board
-        import busio
-        from adafruit_ads1x15.ads1115 import ADS1115
-        from adafruit_ads1x15.analog_in import AnalogIn
-        import adafruit_bme280
-        from picamera2 import Picamera2
+        try:
+            from gpiozero import LED, OutputDevice, Buzzer
+            import board
+            import busio
+            from adafruit_ads1x15.ads1115 import ADS1115
+            from adafruit_ads1x15.analog_in import AnalogIn
+            import adafruit_bme280
+            from picamera2 import Picamera2
+        except ImportError as exc:
+            raise RuntimeError(
+                "Raspberry Pi hardware dependencies are unavailable. "
+                "Use AGRIVISION_SIMULATION=1 on development machines, or run install_pi.sh on the Pi."
+            ) from exc
 
         soil_cfg = cfg.section("soil")
         outputs = cfg.section("outputs")
@@ -145,18 +156,24 @@ class PiHardware(Hardware):
         self._pump.off()
 
     def set_health(self, status: HealthStatus) -> None:
-        self._green.off(); self._yellow.off(); self._red.off()
+        self._green.off()
+        self._yellow.off()
+        self._red.off()
         if status == HealthStatus.HEALTHY:
             self._green.on()
-        elif status == HealthStatus.STRESS:
-            self._yellow.on()
         elif status == HealthStatus.DISEASE:
             self._red.on()
+        else:
+            self._yellow.on()
 
     def beep(self, seconds: float) -> None:
+        if seconds <= 0:
+            return
         self._buzzer.on()
-        time.sleep(seconds)
-        self._buzzer.off()
+        try:
+            time.sleep(seconds)
+        finally:
+            self._buzzer.off()
 
     def capture(self, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -164,8 +181,11 @@ class PiHardware(Hardware):
 
     def close(self) -> None:
         try:
-            self._pump.off(); self._buzzer.off()
-            self._green.off(); self._yellow.off(); self._red.off()
+            self._pump.off()
+            self._buzzer.off()
+            self._green.off()
+            self._yellow.off()
+            self._red.off()
         finally:
             try:
                 self._camera.stop()

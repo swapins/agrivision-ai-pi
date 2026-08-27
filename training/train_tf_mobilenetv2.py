@@ -8,9 +8,9 @@ Official PeachBot release lineage:
 - Initialization: scratch (no ImageNet weights)
 - Export: full-integer UINT8 TensorFlow Lite
 
-ImageNet initialization remains available only as an explicit research comparison.
-The tiny dataset mode is strictly for pipeline smoke tests and must never be
-presented as a trained release model.
+The official binary path deliberately uses deterministic class-balanced
+oversampling and multiple release metrics. A model that predicts only one
+class is rejected even when raw accuracy looks acceptable.
 """
 from __future__ import annotations
 
@@ -44,40 +44,37 @@ def parse_args():
     p.add_argument("--dataset", default=OFFICIAL_DATASET)
     p.add_argument("--revision", default=DATASET_REVISION)
     p.add_argument(
-        "--output",
-        type=Path,
+        "--output", type=Path,
         default=Path("training/output/agrivision-mobilenetv2"),
     )
     p.add_argument("--image-size", type=int, default=224)
     p.add_argument("--alpha", type=float, default=0.35)
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument(
-        "--init",
-        choices=["scratch", "imagenet"],
-        default="scratch",
+        "--init", choices=["scratch", "imagenet"], default="scratch",
         help="Official releases use scratch. ImageNet is research-comparison only.",
     )
-    p.add_argument("--scratch-epochs", type=int, default=15)
+    p.add_argument("--scratch-epochs", type=int, default=20)
     p.add_argument("--head-epochs", type=int, default=4)
     p.add_argument("--finetune-epochs", type=int, default=5)
     p.add_argument("--learning-rate", type=float, default=3e-4)
     p.add_argument("--head-learning-rate", type=float, default=1e-3)
     p.add_argument("--finetune-learning-rate", type=float, default=1e-5)
     p.add_argument("--representative-samples", type=int, default=300)
+    p.add_argument("--min-int8-accuracy", type=float, default=None)
+    p.add_argument("--min-int8-balanced-accuracy", type=float, default=None)
+    p.add_argument("--min-int8-macro-f1", type=float, default=None)
+    p.add_argument("--require-all-classes-predicted", action="store_true")
+    p.add_argument("--sanity-samples-per-class", type=int, default=32)
+    p.add_argument("--sanity-epochs", type=int, default=10)
+    p.add_argument("--min-sanity-accuracy", type=float, default=0.85)
+    p.add_argument("--skip-sanity-check", action="store_true")
     p.add_argument(
-        "--min-int8-accuracy",
-        type=float,
-        default=None,
-        help="Fail after evaluation when INT8 held-out accuracy is below this value.",
-    )
-    p.add_argument(
-        "--require-official-lineage",
-        action="store_true",
+        "--require-official-lineage", action="store_true",
         help="Fail unless using the official full dataset, revision, binary task, and scratch init.",
     )
     p.add_argument(
-        "--smoke",
-        action="store_true",
+        "--smoke", action="store_true",
         help="Use debug-grade plantvillage-tiny and one short epoch. Never a final release.",
     )
     p.add_argument("--no-imagenet", action="store_true", help=argparse.SUPPRESS)
@@ -90,25 +87,14 @@ def stable_bucket(text: str, modulus: int = 10) -> int:
 
 def build_index(ds, task: str):
     rows = []
-    all_classes = (
-        sorted(set(ds["class_label"]))
-        if task == "multiclass"
-        else ["healthy", "problem"]
-    )
+    all_classes = sorted(set(ds["class_label"])) if task == "multiclass" else ["healthy", "problem"]
     class_to_id = {name: i for i, name in enumerate(all_classes)}
 
-    class_labels = ds["class_label"]
-    diseases = ds["disease"]
-    source_splits = ds["split"]
-    leaf_ids = ds["leaf_id"]
-
     for i, (class_label, disease, source_split, leaf_id) in enumerate(
-        zip(class_labels, diseases, source_splits, leaf_ids)
+        zip(ds["class_label"], ds["disease"], ds["split"], ds["leaf_id"])
     ):
         if task == "binary":
-            target_name = (
-                "healthy" if str(disease).strip().lower() == "healthy" else "problem"
-            )
+            target_name = "healthy" if str(disease).strip().lower() == "healthy" else "problem"
         else:
             target_name = class_label
 
@@ -116,23 +102,50 @@ def build_index(ds, task: str):
             split = "test"
         else:
             split = "val" if stable_bucket(str(leaf_id), 10) == 0 else "train"
-
         rows.append((i, class_to_id[target_name], split))
     return rows, all_classes
 
 
 def validate_split_integrity(ds, rows):
-    """Verify no leaf_id appears across train/val/test in our constructed index."""
     split_by_leaf = defaultdict(set)
     for index, _, split in rows:
         split_by_leaf[str(ds[index]["leaf_id"])].add(split)
-    leaking = sorted(
-        leaf_id for leaf_id, splits in split_by_leaf.items() if len(splits) > 1
-    )
+    leaking = sorted(leaf_id for leaf_id, splits in split_by_leaf.items() if len(splits) > 1)
     if leaking:
         raise RuntimeError(
             f"Split-integrity failure: {len(leaking)} leaf_id values cross split boundaries."
         )
+
+
+def split_class_counts(rows, labels):
+    result = {}
+    for split in ("train", "val", "test"):
+        counts = Counter(target for _, target, row_split in rows if row_split == split)
+        result[split] = {label: int(counts.get(i, 0)) for i, label in enumerate(labels)}
+    return result
+
+
+def balance_rows(rows):
+    """Deterministically oversample every training class to the largest class."""
+    by_class = defaultdict(list)
+    for row in rows:
+        by_class[row[1]].append(row)
+    if not by_class:
+        raise RuntimeError("Cannot balance an empty training split.")
+
+    target_size = max(len(values) for values in by_class.values())
+    rng = np.random.default_rng(SEED)
+    balanced = []
+    for class_id in sorted(by_class):
+        values = list(by_class[class_id])
+        if not values:
+            raise RuntimeError(f"Training class {class_id} has no examples.")
+        balanced.extend(values)
+        if len(values) < target_size:
+            extra_idx = rng.choice(len(values), size=target_size - len(values), replace=True)
+            balanced.extend(values[int(i)] for i in extra_idx)
+    rng.shuffle(balanced)
+    return balanced
 
 
 def image_generator(ds, rows, image_size):
@@ -152,100 +165,97 @@ def make_tf_dataset(ds, rows, image_size, batch_size, training):
         tf.TensorSpec(shape=(), dtype=tf.int32),
     )
     out = tf.data.Dataset.from_generator(
-        lambda: image_generator(ds, rows, image_size),
-        output_signature=signature,
+        lambda: image_generator(ds, rows, image_size), output_signature=signature
     )
     if training:
-        out = out.shuffle(
-            min(len(rows), 4096), seed=SEED, reshuffle_each_iteration=True
-        )
-    return out.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+        out = out.shuffle(min(len(rows), 256), seed=SEED, reshuffle_each_iteration=True)
+    return out.batch(batch_size).prefetch(1)
 
 
-def build_model(image_size, alpha, num_classes, init_mode):
+def print_tensorflow_runtime():
+    gpus = tf.config.list_physical_devices("GPU")
+    gpu_names = [gpu.name for gpu in gpus]
+    built_with_cuda = bool(tf.test.is_built_with_cuda())
+    using_cuda_gpu = bool(gpus) and built_with_cuda
+    policy = tf.keras.mixed_precision.global_policy()
+    print("TensorFlow runtime:")
+    print(f"  version: {tf.__version__}")
+    print(f"  physical GPUs: {gpu_names if gpu_names else 'none'}")
+    print(f"  CUDA GPU in use: {using_cuda_gpu}")
+    print(f"  mixed precision policy: {policy.name}")
+
+
+def build_model(image_size, alpha, num_classes, init_mode, augment=True):
     inputs = tf.keras.Input(shape=(image_size, image_size, 3), name="image")
-    aug = tf.keras.Sequential(
-        [
-            tf.keras.layers.RandomFlip("horizontal"),
-            tf.keras.layers.RandomRotation(0.08),
-            tf.keras.layers.RandomZoom(0.10),
-            tf.keras.layers.RandomContrast(0.12),
-        ],
-        name="augmentation",
-    )
-    x = aug(inputs)
-    x = tf.keras.layers.Rescaling(
-        1.0 / 127.5, offset=-1.0, name="mobilenet_scaling"
-    )(x)
+    x = inputs
+    if augment:
+        x = tf.keras.Sequential(
+            [
+                tf.keras.layers.RandomFlip("horizontal"),
+                tf.keras.layers.RandomRotation(0.08),
+                tf.keras.layers.RandomZoom(0.10),
+                tf.keras.layers.RandomContrast(0.12),
+            ],
+            name="augmentation",
+        )(x)
+    x = tf.keras.layers.Rescaling(1.0 / 127.5, offset=-1.0, name="mobilenet_scaling")(x)
 
     weights = "imagenet" if init_mode == "imagenet" else None
     base = tf.keras.applications.MobileNetV2(
-        input_shape=(image_size, image_size, 3),
-        alpha=alpha,
-        include_top=False,
-        weights=weights,
+        input_shape=(image_size, image_size, 3), alpha=alpha,
+        include_top=False, weights=weights,
     )
     x = base(x)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
     x = tf.keras.layers.Dropout(0.20)(x)
-    outputs = tf.keras.layers.Dense(
-        num_classes, activation="softmax", name="plant_health"
-    )(x)
+    outputs = tf.keras.layers.Dense(num_classes, activation="softmax", name="plant_health")(x)
     return tf.keras.Model(inputs, outputs, name="agrivision_mobilenetv2"), base
-
-
-def class_weights(rows):
-    counts = Counter(target for _, target, split in rows if split == "train")
-    total = sum(counts.values())
-    n = len(counts)
-    return {c: total / (n * count) for c, count in counts.items()}
 
 
 def callbacks():
     return [
         tf.keras.callbacks.EarlyStopping(
-            monitor="val_accuracy", patience=3, restore_best_weights=True
+            monitor="val_loss", patience=4, min_delta=1e-4, restore_best_weights=True
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
-            monitor="val_loss", patience=1, factor=0.3, min_lr=1e-7
+            monitor="val_loss", patience=2, factor=0.3, min_lr=1e-7
         ),
     ]
 
 
-def train_model(model, base, args, train_ds, val_ds, weights):
+def history_to_json(history):
+    return {
+        key: [float(v) for v in values]
+        for key, values in history.history.items()
+    }
+
+
+def train_model(model, base, args, train_ds, val_ds):
+    histories = []
     if args.init == "scratch":
         base.trainable = True
         model.compile(
             optimizer=tf.keras.optimizers.Adam(args.learning_rate),
-            loss="sparse_categorical_crossentropy",
-            metrics=["accuracy"],
+            loss="sparse_categorical_crossentropy", metrics=["accuracy"],
         )
-        print("Training official scratch-initialized MobileNetV2")
-        model.fit(
-            train_ds,
-            validation_data=val_ds,
-            epochs=args.scratch_epochs,
-            class_weight=weights,
+        print("Training scratch-initialized MobileNetV2 with balanced oversampling")
+        h = model.fit(
+            train_ds, validation_data=val_ds, epochs=args.scratch_epochs,
             callbacks=callbacks(),
         )
-        return
+        histories.append({"stage": "scratch", "history": history_to_json(h)})
+        return histories
 
     base.trainable = False
     model.compile(
         optimizer=tf.keras.optimizers.Adam(args.head_learning_rate),
-        loss="sparse_categorical_crossentropy",
-        metrics=["accuracy"],
+        loss="sparse_categorical_crossentropy", metrics=["accuracy"],
     )
-    print("Stage 1: ImageNet research comparison — classifier head")
-    model.fit(
-        train_ds,
-        validation_data=val_ds,
-        epochs=args.head_epochs,
-        class_weight=weights,
-        callbacks=callbacks(),
+    h = model.fit(
+        train_ds, validation_data=val_ds, epochs=args.head_epochs, callbacks=callbacks()
     )
+    histories.append({"stage": "imagenet_head", "history": history_to_json(h)})
 
-    print("Stage 2: ImageNet research comparison — fine-tune final layers")
     base.trainable = True
     freeze_to = max(0, len(base.layers) - 30)
     for layer in base.layers[:freeze_to]:
@@ -255,25 +265,77 @@ def train_model(model, base, args, train_ds, val_ds, weights):
             layer.trainable = False
     model.compile(
         optimizer=tf.keras.optimizers.Adam(args.finetune_learning_rate),
-        loss="sparse_categorical_crossentropy",
-        metrics=["accuracy"],
+        loss="sparse_categorical_crossentropy", metrics=["accuracy"],
     )
     if args.finetune_epochs:
-        model.fit(
-            train_ds,
-            validation_data=val_ds,
-            epochs=args.finetune_epochs,
-            class_weight=weights,
+        h = model.fit(
+            train_ds, validation_data=val_ds, epochs=args.finetune_epochs,
             callbacks=callbacks(),
         )
+        histories.append({"stage": "imagenet_finetune", "history": history_to_json(h)})
+    return histories
 
 
-def representative_rows(train_rows, samples, num_classes):
-    """Choose a deterministic, roughly class-balanced calibration sample."""
+def balanced_sanity_rows(train_rows, per_class):
     by_class = defaultdict(list)
     for row in train_rows:
         by_class[row[1]].append(row)
+    rng = np.random.default_rng(SEED)
+    selected = []
+    for class_id in sorted(by_class):
+        values = list(by_class[class_id])
+        rng.shuffle(values)
+        selected.extend(values[: min(per_class, len(values))])
+    rng.shuffle(selected)
+    return selected
 
+
+def run_overfit_sanity(ds, train_rows, args, labels):
+    """Prove the same scratch architecture can learn both labels on a tiny balanced subset."""
+    sanity_rows = balanced_sanity_rows(train_rows, args.sanity_samples_per_class)
+    counts = Counter(target for _, target, _ in sanity_rows)
+    if len(counts) != len(labels):
+        raise RuntimeError(f"Sanity check missing class: {dict(counts)}")
+
+    tf.keras.backend.clear_session()
+    tf.keras.utils.set_random_seed(SEED)
+    model, base = build_model(args.image_size, args.alpha, len(labels), "scratch", augment=False)
+    base.trainable = True
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(1e-3),
+        loss="sparse_categorical_crossentropy", metrics=["accuracy"],
+    )
+    sanity_ds = make_tf_dataset(
+        ds, sanity_rows, args.image_size, min(args.batch_size, 16), True
+    )
+    model.fit(sanity_ds, epochs=args.sanity_epochs, verbose=2)
+
+    y_true, y_pred = [], []
+    for image, target in image_generator(ds, sanity_rows, args.image_size):
+        scores = model.predict(np.expand_dims(image, 0), verbose=0)[0]
+        y_true.append(int(target))
+        y_pred.append(int(np.argmax(scores)))
+    result = metrics_from_predictions(y_true, y_pred, labels)
+    result["samples_per_class_requested"] = int(args.sanity_samples_per_class)
+    result["epochs"] = int(args.sanity_epochs)
+    result["passed"] = bool(
+        result["accuracy"] >= args.min_sanity_accuracy
+        and result["classes_predicted"] == len(labels)
+    )
+    print("Balanced overfit sanity:", json.dumps(result, indent=2))
+    if not result["passed"]:
+        raise RuntimeError(
+            "Balanced overfit sanity failed: the scratch architecture/pipeline did not "
+            "learn both classes before full training."
+        )
+    tf.keras.backend.clear_session()
+    return result
+
+
+def representative_rows(train_rows, samples, num_classes):
+    by_class = defaultdict(list)
+    for row in train_rows:
+        by_class[row[1]].append(row)
     rng = np.random.default_rng(SEED)
     for values in by_class.values():
         rng.shuffle(values)
@@ -282,7 +344,6 @@ def representative_rows(train_rows, samples, num_classes):
     per_class = max(1, samples // max(1, num_classes))
     for class_id in sorted(by_class):
         selected.extend(by_class[class_id][:per_class])
-
     if len(selected) < samples:
         used = {(r[0], r[1], r[2]) for r in selected}
         remaining = [r for r in train_rows if (r[0], r[1], r[2]) not in used]
@@ -291,15 +352,7 @@ def representative_rows(train_rows, samples, num_classes):
     return selected[:samples]
 
 
-def export_int8(
-    model,
-    ds,
-    train_rows,
-    out_path: Path,
-    image_size: int,
-    samples: int,
-    num_classes: int,
-):
+def export_int8(model, ds, train_rows, out_path, image_size, samples, num_classes):
     indices = representative_rows(train_rows, samples, num_classes)
 
     def representative():
@@ -317,13 +370,14 @@ def export_int8(
 
 def metrics_from_predictions(y_true, y_pred, labels):
     report = classification_report(
-        y_true,
-        y_pred,
-        labels=list(range(len(labels))),
-        target_names=labels,
-        output_dict=True,
-        zero_division=0,
+        y_true, y_pred, labels=list(range(len(labels))), target_names=labels,
+        output_dict=True, zero_division=0,
     )
+    pred_counts_raw = Counter(y_pred)
+    prediction_counts = {
+        label: int(pred_counts_raw.get(i, 0)) for i, label in enumerate(labels)
+    }
+    total = max(1, len(y_pred))
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
@@ -332,39 +386,37 @@ def metrics_from_predictions(y_true, y_pred, labels):
             y_true, y_pred, labels=list(range(len(labels)))
         ).tolist(),
         "classification_report": report,
+        "prediction_counts": prediction_counts,
+        "prediction_fractions": {
+            label: float(count / total) for label, count in prediction_counts.items()
+        },
+        "classes_predicted": int(sum(count > 0 for count in prediction_counts.values())),
+        "collapsed_prediction": bool(sum(count > 0 for count in prediction_counts.values()) < len(labels)),
     }
 
 
-def evaluate_float(model, ds, test_rows, image_size, labels):
-    y_true = []
-    y_pred = []
-    for image, target in image_generator(ds, test_rows, image_size):
-        scores = model.predict(np.expand_dims(image, 0), verbose=0)[0]
-        y_true.append(int(target))
-        y_pred.append(int(np.argmax(scores)))
+def evaluate_float(model, ds, test_rows, image_size, labels, batch_size=32):
+    test_ds = make_tf_dataset(ds, test_rows, image_size, batch_size, False)
+    scores = model.predict(test_ds, verbose=0)
+    y_true = [int(target) for _, target, _ in test_rows]
+    y_pred = [int(index) for index in np.argmax(scores, axis=1)]
     return metrics_from_predictions(y_true, y_pred, labels)
 
 
-def evaluate_tflite(path: Path, ds, test_rows, image_size: int, labels):
+def evaluate_tflite(path, ds, test_rows, image_size, labels):
     interpreter = tf.lite.Interpreter(model_path=str(path))
     interpreter.allocate_tensors()
     inp = interpreter.get_input_details()[0]
     out = interpreter.get_output_details()[0]
 
-    y_true = []
-    y_pred = []
+    y_true, y_pred = [], []
     for image, target in image_generator(ds, test_rows, image_size):
-        if inp["dtype"] == np.uint8:
-            arr = np.clip(np.round(image), 0, 255).astype(np.uint8)
-        else:
-            arr = image.astype(inp["dtype"])
-
+        arr = np.clip(np.round(image), 0, 255).astype(np.uint8) if inp["dtype"] == np.uint8 else image.astype(inp["dtype"])
         interpreter.set_tensor(inp["index"], np.expand_dims(arr, 0))
         interpreter.invoke()
         scores = interpreter.get_tensor(out["index"])[0]
         y_true.append(int(target))
         y_pred.append(int(np.argmax(scores)))
-
     return metrics_from_predictions(y_true, y_pred, labels)
 
 
@@ -372,41 +424,50 @@ def enforce_official_lineage(args, dataset_id):
     if not args.require_official_lineage:
         return
     expected = {
-        "dataset": OFFICIAL_DATASET,
-        "revision": DATASET_REVISION,
-        "task": "binary",
-        "init": "scratch",
-        "smoke": False,
+        "dataset": OFFICIAL_DATASET, "revision": DATASET_REVISION,
+        "task": "binary", "init": "scratch", "smoke": False,
     }
     actual = {
-        "dataset": dataset_id,
-        "revision": args.revision,
-        "task": args.task,
-        "init": args.init,
-        "smoke": bool(args.smoke),
+        "dataset": dataset_id, "revision": args.revision,
+        "task": args.task, "init": args.init, "smoke": bool(args.smoke),
     }
     if actual != expected:
-        raise RuntimeError(
-            "Official-lineage gate failed.\n"
-            f"Expected: {expected}\nActual: {actual}"
+        raise RuntimeError(f"Official-lineage gate failed.\nExpected: {expected}\nActual: {actual}")
+
+
+def enforce_release_gates(args, metrics, labels):
+    failures = []
+    checks = [
+        ("accuracy", args.min_int8_accuracy),
+        ("balanced_accuracy", args.min_int8_balanced_accuracy),
+        ("macro_f1", args.min_int8_macro_f1),
+    ]
+    for name, minimum in checks:
+        if minimum is not None and float(metrics[name]) < minimum:
+            failures.append(f"{name} {float(metrics[name]):.4f} < {minimum:.4f}")
+    if args.require_all_classes_predicted and metrics["classes_predicted"] != len(labels):
+        failures.append(
+            f"predicted {metrics['classes_predicted']}/{len(labels)} classes; distribution={metrics['prediction_counts']}"
         )
+    if failures:
+        raise SystemExit("Release gate failed: " + "; ".join(failures))
 
 
 def main():
     args = parse_args()
+    print_tensorflow_runtime()
     if args.no_imagenet:
         args.init = "scratch"
-
     if args.smoke:
         args.dataset = SMOKE_DATASET
         args.scratch_epochs = 1
         args.head_epochs = 1
         args.finetune_epochs = 0
         args.representative_samples = min(args.representative_samples, 96)
+        args.skip_sanity_check = True
 
     dataset_id = args.dataset
     enforce_official_lineage(args, dataset_id)
-
     tf.keras.utils.set_random_seed(SEED)
     np.random.seed(SEED)
     args.output.mkdir(parents=True, exist_ok=True)
@@ -419,45 +480,42 @@ def main():
     train_rows = [r for r in rows if r[2] == "train"]
     val_rows = [r for r in rows if r[2] == "val"]
     test_rows = [r for r in rows if r[2] == "test"]
-    print(
-        {
-            "train": len(train_rows),
-            "val": len(val_rows),
-            "test": len(test_rows),
-            "classes": len(labels),
-            "initialization": args.init,
-        }
-    )
+    counts = split_class_counts(rows, labels)
+    print("Split class counts:", json.dumps(counts, indent=2))
+
+    sanity = None
+    if not args.skip_sanity_check:
+        sanity = run_overfit_sanity(ds, train_rows, args, labels)
+        tf.keras.utils.set_random_seed(SEED)
+
+    balanced_train_rows = balance_rows(train_rows) if args.task == "binary" else train_rows
+    balanced_counts = Counter(target for _, target, _ in balanced_train_rows)
+    print("Training rows after balancing:", {labels[i]: int(balanced_counts[i]) for i in range(len(labels))})
 
     train_ds = make_tf_dataset(
-        ds, train_rows, args.image_size, args.batch_size, True
+        ds, balanced_train_rows, args.image_size, args.batch_size, True
     )
     val_ds = make_tf_dataset(ds, val_rows, args.image_size, args.batch_size, False)
 
     model, base = build_model(args.image_size, args.alpha, len(labels), args.init)
-    train_model(model, base, args, train_ds, val_ds, class_weights(rows))
+    histories = train_model(model, base, args, train_ds, val_ds)
+    (args.output / "training_history.json").write_text(
+        json.dumps(histories, indent=2), encoding="utf-8"
+    )
 
-    float_metrics = evaluate_float(model, ds, test_rows, args.image_size, labels)
-
+    float_metrics = evaluate_float(
+        model, ds, test_rows, args.image_size, labels, args.batch_size
+    )
     keras_path = args.output / "plant_health.keras"
     model.save(keras_path)
-    (args.output / "labels.txt").write_text(
-        "\n".join(labels) + "\n", encoding="utf-8"
-    )
+    (args.output / "labels.txt").write_text("\n".join(labels) + "\n", encoding="utf-8")
 
     int8_path = args.output / "plant_health_int8.tflite"
     export_int8(
-        model,
-        ds,
-        train_rows,
-        int8_path,
-        args.image_size,
-        args.representative_samples,
-        len(labels),
+        model, ds, train_rows, int8_path, args.image_size,
+        args.representative_samples, len(labels),
     )
-    int8_metrics = evaluate_tflite(
-        int8_path, ds, test_rows, args.image_size, labels
-    )
+    int8_metrics = evaluate_tflite(int8_path, ds, test_rows, args.image_size, labels)
 
     manifest = {
         "project": "AgriVision AI",
@@ -469,10 +527,8 @@ def main():
         "input_size": [args.image_size, args.image_size, 3],
         "initialization": args.init,
         "official_release_lineage": (
-            not args.smoke
-            and dataset_id == OFFICIAL_DATASET
-            and args.revision == DATASET_REVISION
-            and args.task == "binary"
+            not args.smoke and dataset_id == OFFICIAL_DATASET
+            and args.revision == DATASET_REVISION and args.task == "binary"
             and args.init == "scratch"
         ),
         "task": args.task,
@@ -484,11 +540,27 @@ def main():
             "Source held-out test assignment; validation by deterministic leaf_id hash. "
             "PlantVillage metadata has genuine leaf grouping for most, but not all, classes."
         ),
+        "split_class_counts": counts,
         "train_examples": len(train_rows),
+        "balanced_train_examples": len(balanced_train_rows),
         "validation_examples": len(val_rows),
         "test_examples": len(test_rows),
+        "training_strategy": {
+            "binary_balancing": "deterministic minority oversampling to equal class counts" if args.task == "binary" else "none",
+            "class_weight": False,
+            "early_stopping_monitor": "val_loss",
+            "scratch_epochs_max": args.scratch_epochs,
+            "learning_rate": args.learning_rate,
+        },
+        "balanced_overfit_sanity": sanity,
         "float_test_metrics": float_metrics,
         "int8_test_metrics": int8_metrics,
+        "release_gate": {
+            "min_int8_accuracy": args.min_int8_accuracy,
+            "min_int8_balanced_accuracy": args.min_int8_balanced_accuracy,
+            "min_int8_macro_f1": args.min_int8_macro_f1,
+            "require_all_classes_predicted": bool(args.require_all_classes_predicted),
+        },
         "smoke_dataset": bool(args.smoke),
         "edge_tpu_compiled": False,
         "limitations": [
@@ -500,18 +572,9 @@ def main():
     (args.output / "model_manifest.json").write_text(
         json.dumps(manifest, indent=2), encoding="utf-8"
     )
-
     print(json.dumps(manifest, indent=2))
     print(f"\nNext: training/compile_edgetpu.sh {int8_path}")
-
-    if args.min_int8_accuracy is not None:
-        measured = float(int8_metrics["accuracy"])
-        if measured < args.min_int8_accuracy:
-            raise SystemExit(
-                "Release gate failed: "
-                f"INT8 held-out accuracy {measured:.4f} "
-                f"< required {args.min_int8_accuracy:.4f}"
-            )
+    enforce_release_gates(args, int8_metrics, labels)
 
 
 if __name__ == "__main__":

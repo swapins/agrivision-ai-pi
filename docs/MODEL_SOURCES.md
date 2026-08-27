@@ -1,21 +1,22 @@
-# Model selection evidence
+# Model Source Evidence
 
-AgriVision AI uses a **MobileNetV2 alpha 0.35, 224×224** transfer-learning target for the Coral path.
+AgriVision AI trains and deploys its own MobileNetV2 alpha 0.35 classifier for Raspberry Pi 4 + Coral USB Accelerator deployment.
 
-Why this family:
+Primary project release:
 
-- Google Coral is built for mobile/edge TensorFlow Lite inference, and MobileNetV2 is a canonical Edge TPU vision architecture.
-- STMicroelectronics publishes a MobileNetV2 α=0.35 / 224 px reference trained on a PlantVillage-style plant-leaf dataset; its reported INT8 top-1 accuracy is 99.68% on that controlled dataset. This is evidence that the architecture is sufficiently expressive for leaf classification, **not** a claim about this AgriVision model.
-- The release dataset is `geraldmc/plantvillage-full`: 54,304 controlled-background images across 38 host/disease classes with a provided leaf-grouped held-out split. The project preserves the source test split to reduce same-leaf leakage.
+- Hugging Face model: https://huggingface.co/peachbotAI/agrivision-mobilenetv2-edge-tpu
+- Dataset: https://huggingface.co/datasets/geraldmc/plantvillage-full
+- Dataset revision: `v0.1.0`
+- Dataset license: CC0-1.0
 
-Primary public references:
+Public architecture references:
 
-- https://huggingface.co/datasets/geraldmc/plantvillage-full
-- https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/main/image_classification/mobilenetv2/README.md
-- https://www.coral.ai/
+- Google Coral Edge TPU: https://www.coral.ai/
+- TensorFlow Lite: https://www.tensorflow.org/lite
+- STMicroelectronics MobileNetV2 alpha 0.35 / 224 px reference: https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/main/image_classification/mobilenetv2/README.md
 
-## Important distinction
+The ST model zoo entry is evidence that this architecture family is appropriate for compact edge vision. It is not redistributed as AgriVision AI weights and is not presented as a model trained by this project.
 
-The ST model is a **reference**, not redistributed as AgriVision weights and not presented as a model trained by this project. AgriVision's `training/train_tf_mobilenetv2.py` trains its own classifier and records its own held-out float/INT8 metrics in `model_manifest.json`.
+AgriVision release metrics are the metrics recorded for the PeachBot AI trained model and manifest, not copied from a third-party model.
 
-PlantVillage's controlled backgrounds make it good for a school proof-of-concept but insufficient for claims of general field diagnosis. Exhibition language must remain “possible disease/problem.”
+Controlled-background PlantVillage results must not be described as general field performance.
