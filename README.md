@@ -39,6 +39,14 @@ Official model repository:
 
 https://huggingface.co/peachbotAI/agrivision-mobilenetv2-edge-tpu
 
+Model card summary:
+
+- Pipeline: image classification
+- Runtime format: LiteRT / TensorFlow Lite
+- Hugging Face model license: Apache-2.0
+- Tags: Coral Edge TPU, Raspberry Pi, MobileNetV2, INT8, plant health, edge AI
+- Public release files: `plant_health_int8.tflite`, `plant_health_edgetpu.tflite`, `labels.txt`, `model_manifest.json`, `training_history.json`, `README.md`
+
 Required local runtime files:
 
 - `models/plant_health_edgetpu.tflite`
@@ -64,6 +72,8 @@ Published model lineage:
 - Edge TPU Compiler: 16.0.384591198
 - Compiler result: 69 ops mapped to Edge TPU, 0 ops on CPU
 - Compiled artifact: `plant_health_edgetpu.tflite`
+- Edge TPU artifact SHA256: `101adaec951ec41c6c3dae583f07f49b6554dd6bfc7c88d884ed59e01e285bca`
+- Physical Raspberry Pi + Coral hardware validation: pending
 
 Held-out PlantVillage evaluation:
 
@@ -73,6 +83,27 @@ Held-out PlantVillage evaluation:
 | INT8 | 0.9857508220679576 | 0.9809942841356456 | 0.9820030388618228 |
 
 Defensible summary: **98.58% held-out INT8 test accuracy on the PlantVillage dataset.**
+
+INT8 confusion matrix:
+
+|  | Predicted healthy | Predicted problem |
+|---|---:|---:|
+| True healthy | 2,898 | 88 |
+| True problem | 68 | 7,894 |
+
+Release dataset sizes and gate:
+
+| Split / gate | Value |
+|---|---:|
+| Train examples | 38,840 |
+| Balanced train examples | 56,080 |
+| Validation examples | 4,516 |
+| Test examples | 10,948 |
+| Minimum INT8 accuracy gate | 0.80 |
+| Minimum INT8 balanced accuracy gate | 0.75 |
+| Minimum INT8 macro-F1 gate | 0.75 |
+
+The release manifest also records that both labels were predicted and the INT8 classifier did not collapse to one output class.
 
 Do not describe this as field accuracy. PlantVillage uses controlled-background leaf imagery and does not prove real farm performance under changing light, camera distance, cultivar, or disease conditions.
 
