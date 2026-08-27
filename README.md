@@ -14,7 +14,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Developed by [Isis Saritha Swapin](https://peachbot.in/people/4)**  
-Class VIII, Syndesmos Public School Mannar Kerala India  · PeachBot Author
+Studying in **Class 8** at **[Syndesmos Public School, Parumala, Thiruvalla](http://syndesmospublicschool.org/)** · PeachBot Author
 
 **Contributor: Swapin Vidya**
 
@@ -43,10 +43,12 @@ Raspberry Pi smart agriculture · AI agriculture project for students · smart f
 
 ### Primary developer — Isis Saritha Swapin
 
-**Isis Saritha Swapin** is the primary developer and student author of AgriVision AI. The repository is presented as her School Science PeachBot project and accompanies her work communicating science and technology through PeachBot.
+**Isis Saritha Swapin** is the primary developer and student author of AgriVision AI. She is studying in **Class 8 at Syndesmos Public School, Parumala, Thiruvalla**. The repository accompanies her work communicating science and technology through PeachBot.
 
 - Role: **Primary Developer / Project Author**
 - Project: **AgriVision AI**
+- School: **Syndesmos Public School, Parumala, Thiruvalla**
+- Current class: **Class 8**
 - Focus: Raspberry Pi, Edge AI, smart farming and school STEM demonstration
 - PeachBot author profile: https://peachbot.in/people/4
 
@@ -279,7 +281,7 @@ The project is **not a professional crop-diagnosis device**. PlantVillage contai
 
 If you reuse AgriVision AI in a school project, article, demonstration or derivative implementation, please credit:
 
-> **Isis Saritha Swapin. AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project. PeachBot, 2026. Contributor: Swapin Vidya.**
+> **Isis Saritha Swapin (Syndesmos Public School, Parumala, Thiruvalla). AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project. PeachBot, 2026. Contributor: Swapin Vidya.**
 
 Machine-readable citation metadata is available in [`CITATION.cff`](CITATION.cff).
 
@@ -297,7 +299,7 @@ Dataset and trained-model artifacts may have their own licensing or redistributi
 
 **SEE · THINK · WATER · PROTECT**
 
-Developed by **Isis Saritha Swapin** · Contributor **Swapin Vidya**  
-**PeachBot — SBC for Biology**
+Developed by **Isis Saritha Swapin**, studying in **Class 8 at Syndesmos Public School, Parumala, Thiruvalla**  
+Contributor **Swapin Vidya** · **PeachBot — SBC for Biology**
 
 </div>
