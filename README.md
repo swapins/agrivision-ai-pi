@@ -1,18 +1,21 @@
 <div align="center">
 
-<img src="src/agrivision/static/logo.png" alt="PeachBot - SBC for Biology" width="320">
+<img src="src/agrivision/static/logo.png" alt="Peachbot Research and Innovations" width="320">
 
 # AgriVision AI
 ## Raspberry Pi + Coral Edge TPU Smart Agriculture Project
 
 **Edge AI plant-health monitoring | automatic irrigation | local/offline inference | school science exhibition**
 
-**Developed by [Isis Saritha Swapin](https://peachbot.in/people/4)**  
-Class 8, Syndesmos Public School, Parumala, Thiruvalla
+**Isis Saritha Swapin**
+
+Class 8th, [Syndesmos Public School, Parumala Thiruvalla](http://syndesmospublicschool.org/)
+
+**Student Researcher (Precision Agriculture)**
 
 **Contributor: Swapin Vidya**
 
-**Publisher: PeachBot AI**
+**Peachbot Research and Innovations**
 
 </div>
 
@@ -170,7 +173,7 @@ AgriVision AI is a school STEM prototype, not a professional crop-diagnosis devi
 
 If you reuse this project, please credit:
 
-**Isis Saritha Swapin (Syndesmos Public School, Parumala, Thiruvalla). AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project. PeachBot AI, 2026. Contributor: Swapin Vidya.**
+**Isis Saritha Swapin (Class 8th, Syndesmos Public School, Parumala Thiruvalla). AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project. Peachbot Research and Innovations, 2026. Student Researcher (Precision Agriculture). Contributor: Swapin Vidya.**
 
 Machine-readable citation metadata is available in `CITATION.cff`.
 

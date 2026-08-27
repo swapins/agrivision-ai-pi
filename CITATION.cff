@@ -1,11 +1,11 @@
 cff-version: 1.2.0
 title: "AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project"
-message: "If you use this project, please cite the primary developer Isis Saritha Swapin, a Class 8 student at Syndesmos Public School, Parumala, Thiruvalla, and acknowledge Swapin Vidya as contributor."
+message: "If you use this project, please cite Isis Saritha Swapin, Class 8th at Syndesmos Public School, Parumala Thiruvalla, Student Researcher (Precision Agriculture), and acknowledge Swapin Vidya as contributor."
 type: software
 authors:
   - family-names: "Swapin"
     given-names: "Isis Saritha"
-    affiliation: "Syndesmos Public School, Parumala, Thiruvalla"
+    affiliation: "Syndesmos Public School, Parumala Thiruvalla"
     website: "https://peachbot.in/people/4"
 contributors:
   - family-names: "Vidya"

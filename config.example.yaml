@@ -2,8 +2,11 @@ project:
   name: "AgriVision AI"
   author: "Isis Saritha Swapin"
   contributor: "Swapin Vidya"
-  class: "VIII"
-  brand: "PeachBot"
+  class: "8th"
+  role: "Student Researcher (Precision Agriculture)"
+  school: "Syndesmos Public School, Parumala Thiruvalla"
+  school_url: "http://syndesmospublicschool.org/"
+  brand: "Peachbot Research and Innovations"
   author_profile: "https://peachbot.in/people/4"
 
 server:

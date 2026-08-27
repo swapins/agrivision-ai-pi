@@ -46,6 +46,7 @@ h1 span { color: var(--navy); }
 .author { text-align: right; display: flex; flex-direction: column; gap: 4px; }
 .author b { font-size: 18px; color: var(--navy); }
 .author span { font-size: 13px; color: #6b786f; }
+.author a { color: inherit; font-weight: 700; }
 
 .simulation-banner {
   background: #8a2d22;

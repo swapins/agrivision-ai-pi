@@ -6,12 +6,17 @@
 
 **Role:** Primary Developer · Project Author  
 **Project:** AgriVision AI — Raspberry Pi + Coral Edge TPU Smart Agriculture Project  
-**School:** Syndesmos Public School, Parumala, Thiruvalla  
-**Current class:** Class 8  
-**Affiliation / publishing identity:** PeachBot Author  
+**School:** Syndesmos Public School, Parumala Thiruvalla
+
+**Current class:** Class 8th
+
+**Role:** Student Researcher (Precision Agriculture)
+
+**Affiliation / publishing identity:** Peachbot Research and Innovations
+
 **PeachBot author profile:** https://peachbot.in/people/4
 
-AgriVision AI is presented and attributed as code and project work developed by **Isis Saritha Swapin**, who is studying in **Class 8 at Syndesmos Public School, Parumala, Thiruvalla**.
+AgriVision AI is presented and attributed as code and project work developed by **Isis Saritha Swapin**, a **Class 8th student at Syndesmos Public School, Parumala Thiruvalla** and **Student Researcher (Precision Agriculture)**.
 
 ## Contributor
 
@@ -26,4 +31,4 @@ When referencing this repository, please preserve primary project attribution to
 
 Suggested citation:
 
-> Isis Saritha Swapin (Syndesmos Public School, Parumala, Thiruvalla). *AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project*. PeachBot, 2026. Contributor: Swapin Vidya.
+> Isis Saritha Swapin (Class 8th, Syndesmos Public School, Parumala Thiruvalla). *AgriVision AI: Raspberry Pi + Coral Edge TPU Smart Agriculture Project*. Peachbot Research and Innovations, 2026. Student Researcher (Precision Agriculture). Contributor: Swapin Vidya.

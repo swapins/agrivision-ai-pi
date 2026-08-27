@@ -10,7 +10,7 @@
   <header class="topbar">
     <div>
       <div class="brandrow">
-        <img class="peachbot-logo" src="{{ url_for('static', filename='peachbot-logo.svg') }}" alt="PeachBot">
+        <img class="peachbot-logo" src="{{ url_for('static', filename='logo.png') }}" alt="Peachbot Research and Innovations">
         <div class="brandline">STEM PROJECT</div>
       </div>
       <h1>AgriVision <span>AI</span></h1>
@@ -18,8 +18,9 @@
     </div>
     <div class="author">
       <b>{{ project.get('author','Isis Saritha Swapin') }}</b>
-      <span>Class {{ project.get('class','VIII') }} | PeachBot AI</span>
-      <span>Contributor: {{ project.get('contributor','Swapin Vidya') }}</span>
+      <span>Class {{ project.get('class','8th') }} | {{ project.get('role','Student Researcher (Precision Agriculture)') }}</span>
+      <span><a href="{{ project.get('school_url','http://syndesmospublicschool.org/') }}">{{ project.get('school','Syndesmos Public School, Parumala Thiruvalla') }}</a></span>
+      <span>{{ project.get('brand','Peachbot Research and Innovations') }}</span>
     </div>
   </header>
 
